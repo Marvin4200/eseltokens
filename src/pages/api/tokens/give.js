@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
     const db = getDb();
     const { to, amount: rawAmount = 1 } = req.body;
-    const amount = Math.max(1, Math.min(100, Math.floor(Number(rawAmount) || 1)));
+    const amount = Math.max(1, Math.floor(Number(rawAmount) || 1));
 
     const toUser = db.prepare('SELECT * FROM users WHERE id = ?').get(to);
     if (!toUser) {

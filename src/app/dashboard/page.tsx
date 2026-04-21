@@ -397,11 +397,10 @@ export default function Dashboard() {
                 <input
                   type="number"
                   value={giveAmount}
-                  onChange={e => setGiveAmount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                  onChange={e => setGiveAmount(Math.max(1, parseInt(e.target.value) || 1))}
                   className="game-input w-full text-center"
                   min={1}
-                  max={100}
-                  placeholder="Eigener Betrag (max 100)"
+                  placeholder="Eigener Betrag"
                 />
               </div>
 

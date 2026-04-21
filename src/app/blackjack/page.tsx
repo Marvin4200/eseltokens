@@ -703,7 +703,7 @@ export default function BlackjackPage() {
               <span className={`block w-5 h-0.5 bg-current transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
               <span className={`block w-5 h-0.5 bg-current transition-all duration-300 origin-center ${menuOpen ? '-rotate-45 -translate-y-[7px]' : ''}`} />
             </button>
-            <span className="text-sm text-gray-400 hidden sm:inline">{session.user?.name}</span>
+            <span className="text-sm text-gray-400 hidden sm:inline">{session?.user?.name}</span>
           </div>
         </div>
       </nav>
