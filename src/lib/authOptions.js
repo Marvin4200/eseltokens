@@ -2,6 +2,7 @@ import DiscordProvider from 'next-auth/providers/discord';
 import getDb from '@/lib/db';
 
 const authOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID,
@@ -9,11 +10,31 @@ const authOptions = {
       authorization: {
         params: {
           scope: 'identify',
-          prompt: 'none',
+          // prompt: 'none' removed — caused "State cookie was missing" behind reverse proxy
         },
       },
     }),
   ],
+  cookies: {
+    pkceCodeVerifier: {
+      name: 'next-auth.pkce.code_verifier',
+      options: {
+        httpOnly: true,
+        sameSite: 'none',
+        path: '/',
+        secure: true,
+      },
+    },
+    state: {
+      name: 'next-auth.state',
+      options: {
+        httpOnly: true,
+        sameSite: 'none',
+        path: '/',
+        secure: true,
+      },
+    },
+  },
   callbacks: {
     async signIn({ user, account, profile }) {
       const db = getDb();
