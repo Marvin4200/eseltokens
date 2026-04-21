@@ -17,24 +17,21 @@ Eine moderne Website für die Eselbande Community mit einem einfachen Token-Syst
    npm install
    ```
 
-2. Erstelle eine `.env.local` Datei mit deinen Discord und MongoDB Einstellungen:
+2. Erstelle eine `.env.local` Datei mit deinen Discord-Einstellungen:
    ```
    DISCORD_CLIENT_ID=your_discord_client_id
    DISCORD_CLIENT_SECRET=your_discord_client_secret
    NEXTAUTH_SECRET=your_nextauth_secret
    NEXTAUTH_URL=http://localhost:3000
-   MONGODB_URI=mongodb://localhost:27017/eseltokens
    DISCORD_GUILD_ID=your_guild_id
    DISCORD_MEMBER_ROLE_ID=your_member_role_id
    DISCORD_ADMIN_ROLE_ID=your_admin_role_id
    INITIAL_ADMIN_DISCORD_ID=your_discord_id_for_initial_admin
    ```
 
-3. Starte MongoDB (lokal oder MongoDB Atlas).
+   > Die Datenbank ist SQLite (`eseltokens.db`) und wird automatisch beim ersten Start erstellt.
 
-4. Füge ein Hintergrundbild `public/background.jpg` hinzu.
-
-5. Starte den Development Server:
+3. Starte den Development Server:
    ```bash
    npm run dev
    ```
