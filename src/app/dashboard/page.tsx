@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
+import { apiPath } from '@/lib/clientPaths';
 
 // Leveling functions (mirrored from server lib for client use)
 function xpForLevel(level: number): number {
@@ -115,13 +116,13 @@ export default function Dashboard() {
   }, [session]);
 
   const fetchUsers = async () => {
-    const res = await fetch('/api/users');
+    const res = await fetch(apiPath('/api/users'));
     const data = await res.json();
     setUsers(Array.isArray(data) ? data : []);
   };
 
   const fetchTransactions = async () => {
-    const res = await fetch('/api/transactions');
+    const res = await fetch(apiPath('/api/transactions'));
     const data = await res.json();
     setTransactions(Array.isArray(data) ? data : []);
   };
@@ -129,7 +130,7 @@ export default function Dashboard() {
   const giveToken = async () => {
     if (!selectedUser || giveAmount < 1) return;
     setShowGiveEffect(true);
-    await fetch('/api/tokens/give', {
+    await fetch(apiPath('/api/tokens/give'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: selectedUser, amount: giveAmount }),
@@ -143,7 +144,7 @@ export default function Dashboard() {
   const redeemToken = async () => {
     if (redeemAmount < 1 || redeemAmount > userBalance) return;
     setShowRedeemEffect(true);
-    const res = await fetch('/api/tokens/redeem', {
+    const res = await fetch(apiPath('/api/tokens/redeem'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: redeemAmount }),

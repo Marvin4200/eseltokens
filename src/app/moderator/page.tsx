@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { apiPath } from '@/lib/clientPaths';
 
 interface User {
   id: number;
@@ -33,13 +34,13 @@ export default function Moderator() {
   }, [userRole]);
 
   const fetchUsers = async () => {
-    const res = await fetch('/api/moderator/users');
+    const res = await fetch(apiPath('/api/moderator/users'));
     const data = await res.json();
     setUsers(Array.isArray(data) ? data : []);
   };
 
   const updateRole = async (userId: number, role: string) => {
-    await fetch('/api/moderator/update-role', {
+    await fetch(apiPath('/api/moderator/update-role'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, role }),

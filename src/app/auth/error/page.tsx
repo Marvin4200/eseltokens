@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default async function AuthError({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
   const error = params?.error;
@@ -22,9 +24,9 @@ export default async function AuthError({ searchParams }: { searchParams: Promis
               Fehler: {error}
             </p>
           )}
-          <a href="/" className="btn-primary inline-block">
+          <Link href="/" className="btn-primary inline-block">
             Zur Startseite
-          </a>
+          </Link>
         </div>
       </div>
     </div>

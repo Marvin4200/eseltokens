@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { apiPath } from '@/lib/clientPaths';
 
 interface CardData {
   suit: string;
@@ -150,7 +151,7 @@ export default function BlackjackPage() {
     if (activeTableId) return;
     const fetchTables = async () => {
       try {
-        const res = await fetch('/api/blackjack/tables');
+        const res = await fetch(apiPath('/api/blackjack/tables'));
         const data = await res.json();
         setTables(Array.isArray(data) ? data : []);
       } catch {}
@@ -165,7 +166,7 @@ export default function BlackjackPage() {
     if (!activeTableId) { setGameState(null); return; }
     const fetchState = async () => {
       try {
-        const res = await fetch(`/api/blackjack/state?tableId=${activeTableId}`);
+        const res = await fetch(apiPath(`/api/blackjack/state?tableId=${activeTableId}`));
         if (!res.ok) { setActiveTableId(null); return; }
         const data = await res.json();
         setGameState(data);
@@ -230,7 +231,7 @@ export default function BlackjackPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/blackjack/tables', { method: 'POST' });
+      const res = await fetch(apiPath('/api/blackjack/tables'), { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
         if (data.tableId) {
@@ -249,7 +250,7 @@ export default function BlackjackPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/blackjack/join', {
+      const res = await fetch(apiPath('/api/blackjack/join'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableId }),
@@ -267,7 +268,7 @@ export default function BlackjackPage() {
   const leaveTable = async () => {
     if (!activeTableId) return;
     try {
-      await fetch('/api/blackjack/leave', {
+      await fetch(apiPath('/api/blackjack/leave'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableId: activeTableId }),
@@ -281,7 +282,7 @@ export default function BlackjackPage() {
   const toggleReady = async () => {
     if (!activeTableId) return;
     try {
-      await fetch('/api/blackjack/ready', {
+      await fetch(apiPath('/api/blackjack/ready'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableId: activeTableId }),
@@ -293,7 +294,7 @@ export default function BlackjackPage() {
     if (!activeTableId || bet < 1) return;
     setError('');
     try {
-      const res = await fetch('/api/blackjack/bet', {
+      const res = await fetch(apiPath('/api/blackjack/bet'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableId: activeTableId, amount: bet }),
@@ -307,7 +308,7 @@ export default function BlackjackPage() {
     if (!activeTableId) return;
     setError('');
     try {
-      const res = await fetch('/api/blackjack/action', {
+      const res = await fetch(apiPath('/api/blackjack/action'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tableId: activeTableId, action }),

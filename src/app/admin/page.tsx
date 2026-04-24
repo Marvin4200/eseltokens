@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { apiPath } from '@/lib/clientPaths';
 
 interface User {
   id: number;
@@ -64,13 +65,13 @@ export default function Admin() {
   }, [userRole]);
 
   const fetchUsers = async () => {
-    const res = await fetch('/api/admin/users');
+    const res = await fetch(apiPath('/api/admin/users'));
     const data = await res.json();
     setUsers(Array.isArray(data) ? data : []);
   };
 
   const updateBalance = async (userId: number, newBalance: number) => {
-    await fetch('/api/admin/update-balance', {
+    await fetch(apiPath('/api/admin/update-balance'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, balance: newBalance }),
@@ -80,7 +81,7 @@ export default function Admin() {
   };
 
   const updateRole = async (userId: number, role: string) => {
-    await fetch('/api/admin/update-role', {
+    await fetch(apiPath('/api/admin/update-role'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, role }),
@@ -89,7 +90,7 @@ export default function Admin() {
   };
 
   const updateXp = async (userId: number, xp: number) => {
-    await fetch('/api/admin/update-xp', {
+    await fetch(apiPath('/api/admin/update-xp'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, xp }),

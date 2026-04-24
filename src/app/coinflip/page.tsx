@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
+import { apiPath } from '@/lib/clientPaths';
 
 type FlipResult = 'win' | 'lose' | null;
 
@@ -49,7 +50,7 @@ export default function CoinflipPage() {
     setShowResult(false);
 
     try {
-      const res = await fetch('/api/tokens/coinflip', {
+      const res = await fetch(apiPath('/api/tokens/coinflip'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: bet }),

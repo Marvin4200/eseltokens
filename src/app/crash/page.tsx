@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { apiPath } from '@/lib/clientPaths';
 
 const MULTIPLIER_SPEED = 0.00006;
 
@@ -78,7 +79,7 @@ export default function Crash() {
 
     const poll = async () => {
       try {
-        const res = await fetch('/api/crash/state');
+        const res = await fetch(apiPath('/api/crash/state'));
         if (res.ok) {
           const data: GameState = await res.json();
           setGameState(data);
@@ -264,7 +265,7 @@ export default function Crash() {
     if (betPlaced || !gameState || gameState.status !== 'betting') return;
     setErrorMsg('');
     try {
-      const res = await fetch('/api/crash/bet', {
+      const res = await fetch(apiPath('/api/crash/bet'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: betAmount }),
@@ -285,7 +286,7 @@ export default function Crash() {
   const cashOut = async () => {
     if (cashedOut || !gameState || gameState.status !== 'running') return;
     try {
-      const res = await fetch('/api/crash/cashout', {
+      const res = await fetch(apiPath('/api/crash/cashout'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

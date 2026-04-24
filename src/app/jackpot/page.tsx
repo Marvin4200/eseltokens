@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { apiPath } from '@/lib/clientPaths';
 
 const SPIN_DURATION_MS = 6000;
 const EXTRA_ROTATIONS  = 8;
@@ -212,7 +213,7 @@ export default function JackpotPage() {
 
     const poll = async () => {
       try {
-        const res = await fetch('/api/jackpot/state');
+        const res = await fetch(apiPath('/api/jackpot/state'));
         if (!res.ok) return;
         const data: GameState = await res.json();
 
@@ -306,7 +307,7 @@ export default function JackpotPage() {
   const placeDeposit = useCallback(async () => {
     setErrorMsg('');
     try {
-      const res = await fetch('/api/jackpot/deposit', {
+      const res = await fetch(apiPath('/api/jackpot/deposit'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: depositAmount }),
