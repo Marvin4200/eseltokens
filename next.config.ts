@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  basePath: '/eseltokens',
-  assetPrefix: '/eseltokens',
   trailingSlash: true,
+  allowedDevOrigins: ['192.168.2.177'],
   // eventuell temporär:
   // typescript: { ignoreBuildErrors: true },
 };

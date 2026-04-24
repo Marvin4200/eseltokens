@@ -1,6 +1,7 @@
 import getDb from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import authOptions from '@/lib/authOptions';
+import { calculateHand, canDouble, canSplit } from '@/lib/blackjack';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -26,7 +27,6 @@ export default async function handler(req, res) {
   let dealerCards = JSON.parse(table.dealerCards);
   let dealerValue = null;
   if (table.status === 'finished') {
-    const { calculateHand } = require('@/lib/blackjack');
     dealerValue = calculateHand(dealerCards).value;
   } else if (dealerCards.length >= 2) {
     dealerCards = [dealerCards[0], null]; // hide second card
@@ -34,7 +34,6 @@ export default async function handler(req, res) {
 
   const playerData = players.map(p => {
     const hands = JSON.parse(p.hands);
-    const { calculateHand } = require('@/lib/blackjack');
     return {
       seatIndex: p.seatIndex,
       username: p.username,
@@ -49,8 +48,8 @@ export default async function handler(req, res) {
         value: calculateHand(h.cards).value,
         bust: calculateHand(h.cards).bust,
         blackjack: calculateHand(h.cards).blackjack,
-        canSplit: h.status === 'playing' && require('@/lib/blackjack').canSplit(h.cards),
-        canDouble: h.status === 'playing' && require('@/lib/blackjack').canDouble(h.cards),
+        canSplit: h.status === 'playing' && canSplit(h.cards),
+        canDouble: h.status === 'playing' && canDouble(h.cards),
       })),
     };
   });

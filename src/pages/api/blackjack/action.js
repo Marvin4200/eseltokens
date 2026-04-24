@@ -1,19 +1,17 @@
 import getDb from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import authOptions from '@/lib/authOptions';
 import { drawCard, calculateHand, canSplit, canDouble, advanceGame } from '@/lib/blackjack';
+import { methodAllowed, requireSession, sendApiError } from '@/lib/apiGuards';
+import { debitTokens } from '@/lib/tokenLedger';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).end();
-  }
+  if (!methodAllowed(req, res, ['POST'])) return;
 
-  const session = await getServerSession(req, res, authOptions);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
+  const session = await requireSession(req, res);
+  if (!session) return;
 
-  const { tableId, action } = req.body; // action: hit, stand, double, split
-  const db = getDb();
+  try {
+    const { tableId, action } = req.body; // action: hit, stand, double, split
+    const db = getDb();
 
   const table = db.prepare('SELECT * FROM blackjack_tables WHERE id = ?').get(tableId);
   if (!table) return res.status(404).json({ error: 'Tisch nicht gefunden' });
@@ -65,13 +63,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Kann nicht verdoppeln' });
       }
 
-      const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(session.user.id);
-      if (!user || user.balance < hand.bet) {
-        return res.status(400).json({ error: 'Nicht genug Tokens zum Verdoppeln' });
-      }
-
       // Deduct additional bet
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(hand.bet, session.user.id);
+      debitTokens(db, session.user.id, hand.bet);
       hand.bet *= 2;
 
       // Draw exactly one card
@@ -96,13 +89,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Maximale Splits erreicht' });
       }
 
-      const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(session.user.id);
-      if (!user || user.balance < hand.bet) {
-        return res.status(400).json({ error: 'Nicht genug Tokens zum Splitten' });
-      }
-
       // Deduct bet for new hand
-      db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(hand.bet, session.user.id);
+      debitTokens(db, session.user.id, hand.bet);
 
       const card1 = hand.cards[0];
       const card2 = hand.cards[1];
@@ -149,5 +137,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Ungültige Aktion' });
   }
 
-  return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return sendApiError(res, error);
+  }
 }

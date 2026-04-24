@@ -1,10 +1,14 @@
 import getDb from '@/lib/db';
+import { methodAllowed, requireSession } from '@/lib/apiGuards';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
+  if (!methodAllowed(req, res, ['GET'])) return;
+  const session = await requireSession(req, res);
+  if (!session) return;
+
   const db = getDb();
 
-  if (req.method === 'GET') {
-    const transactions = db.prepare(`
+  const transactions = db.prepare(`
       SELECT t.id, t.type, t.amount, t.createdAt,
         fu.username as fromUsername,
         tu.username as toUsername
@@ -14,9 +18,5 @@ export default function handler(req, res) {
       ORDER BY t.createdAt DESC
       LIMIT 50
     `).all();
-    res.status(200).json(transactions);
-  } else {
-    res.setHeader('Allow', ['GET']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
+  res.status(200).json(transactions);
 }

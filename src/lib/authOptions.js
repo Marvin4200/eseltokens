@@ -36,23 +36,30 @@ const authOptions = {
     },
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ profile }) {
+      if (!profile?.id || !profile?.username) {
+        return false;
+      }
+
       const db = getDb();
       const discordId = profile.id;
+      const initialAdminId = process.env.INITIAL_ADMIN_DISCORD_ID;
+      const desiredRole = discordId === initialAdminId ? 'admin' : 'pending';
 
       const existing = db.prepare('SELECT * FROM users WHERE discordId = ?').get(discordId);
 
       if (existing) {
-        db.prepare('UPDATE users SET username = ?, discriminator = ?, avatar = ? WHERE discordId = ?')
-          .run(profile.username, profile.discriminator || '', profile.avatar || '', discordId);
+        const nextRole = desiredRole === 'admin' && existing.role !== 'admin' ? 'admin' : existing.role;
+        db.prepare('UPDATE users SET username = ?, discriminator = ?, avatar = ?, role = ? WHERE discordId = ?')
+          .run(profile.username, profile.discriminator || '', profile.avatar || '', nextRole, discordId);
       } else {
         db.prepare('INSERT INTO users (discordId, username, discriminator, avatar, role) VALUES (?, ?, ?, ?, ?)')
-          .run(discordId, profile.username, profile.discriminator || '', profile.avatar || '', 'pending');
+          .run(discordId, profile.username, profile.discriminator || '', profile.avatar || '', desiredRole);
       }
 
       return true;
     },
-    async jwt({ token, account, profile }) {
+    async jwt({ token, profile }) {
       if (profile) {
         token.discordId = profile.id;
       }
@@ -69,6 +76,7 @@ const authOptions = {
         session.user.xp = user.xp || 0;
         session.user.name = user.username;
       }
+      delete session.user.email;
       return session;
     },
   },

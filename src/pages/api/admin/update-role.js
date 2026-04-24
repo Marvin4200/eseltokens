@@ -1,25 +1,27 @@
 import getDb from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import authOptions from '@/lib/authOptions';
+import { methodAllowed, parseId, requireSession, sendApiError } from '@/lib/apiGuards';
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session || session.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+  if (!methodAllowed(req, res, ['POST'])) return;
+  const session = await requireSession(req, res, ['admin']);
+  if (!session) return;
 
-  const db = getDb();
-
-  if (req.method === 'POST') {
+  try {
+    const db = getDb();
     const { userId, role } = req.body;
+    const id = parseId(userId, 'userId');
     if (!['pending', 'member', 'moderator', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
-    res.status(200).json({ success: true });
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    if (id === session.user.id && role !== 'admin') {
+      return res.status(400).json({ error: 'You cannot remove your own admin role' });
+    }
+
+    const result = db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
+    if (result.changes !== 1) return res.status(404).json({ error: 'User not found' });
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return sendApiError(res, error);
   }
 }

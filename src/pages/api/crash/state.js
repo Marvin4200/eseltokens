@@ -1,13 +1,14 @@
 import getDb from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import authOptions from '@/lib/authOptions';
+import crypto from 'crypto';
 
 const MULTIPLIER_SPEED = 0.00006;
 const BETTING_DURATION = 7000;
 const AFTER_CRASH_DELAY = 4000;
 
 function generateCrashPoint() {
-  const r = Math.random();
+  const r = (crypto.randomInt(1, 2 ** 32) / 2 ** 32);
   // 10% house edge — aggressive
   // ~10% instant crash, ~55% below 2x, ~82% below 5x
   return Math.max(1.00, Math.floor(100 * 0.90 / r) / 100);
@@ -60,10 +61,13 @@ export default async function handler(req, res) {
       if (result.changes > 0) {
         // Process losses for all active bets
         const activeBets = db.prepare('SELECT * FROM crash_bets WHERE game_id = ? AND status = ?').all(game.id, 'active');
-        db.prepare('UPDATE crash_bets SET status = ? WHERE game_id = ? AND status = ?').run('lost', game.id, 'active');
-        for (const bet of activeBets) {
-          db.prepare('INSERT INTO transactions (fromUserId, type, amount) VALUES (?, ?, ?)').run(bet.user_id, 'crash_lose', bet.amount);
-        }
+        const settleLosses = db.transaction(() => {
+          db.prepare('UPDATE crash_bets SET status = ? WHERE game_id = ? AND status = ?').run('lost', game.id, 'active');
+          for (const bet of activeBets) {
+            db.prepare('INSERT INTO transactions (fromUserId, type, amount) VALUES (?, ?, ?)').run(bet.user_id, 'crash_lose', bet.amount);
+          }
+        });
+        settleLosses();
       }
       game.status = 'crashed';
       game.crashed_at = now;

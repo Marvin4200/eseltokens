@@ -1,57 +1,77 @@
 import getDb from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import authOptions from '@/lib/authOptions';
-import { createDeck, drawCard, calculateHand } from '@/lib/blackjack';
+import { createDeck, drawCard, calculateHand, playDealer } from '@/lib/blackjack';
+import { methodAllowed, parseTokenAmount, requireSession, sendApiError } from '@/lib/apiGuards';
+import { debitTokens } from '@/lib/tokenLedger';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).end();
+  if (!methodAllowed(req, res, ['POST'])) return;
+
+  const session = await requireSession(req, res);
+  if (!session) return;
+
+  try {
+    const { tableId, amount } = req.body;
+    const bet = parseTokenAmount(amount);
+
+    const db = getDb();
+
+    const table = db.prepare('SELECT * FROM blackjack_tables WHERE id = ?').get(tableId);
+    if (!table) return res.status(404).json({ error: 'Tisch nicht gefunden' });
+    if (table.status !== 'betting') return res.status(400).json({ error: 'Nicht in der Setzphase' });
+
+    const player = db.prepare('SELECT * FROM blackjack_players WHERE tableId = ? AND userId = ?').get(tableId, session.user.id);
+    if (!player) return res.status(400).json({ error: 'Du bist nicht an diesem Tisch' });
+
+    const hands = JSON.parse(player.hands);
+    if (hands.length > 0) return res.status(400).json({ error: 'Du hast bereits gesetzt' });
+
+    const placeBet = db.transaction(() => {
+      const currentTable = db.prepare('SELECT status FROM blackjack_tables WHERE id = ?').get(tableId);
+      if (!currentTable || currentTable.status !== 'betting') {
+        const err = new Error('Nicht in der Setzphase');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const currentPlayer = db.prepare('SELECT * FROM blackjack_players WHERE tableId = ? AND userId = ?').get(tableId, session.user.id);
+      if (!currentPlayer) {
+        const err = new Error('Du bist nicht an diesem Tisch');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const currentHands = JSON.parse(currentPlayer.hands);
+      if (currentHands.length > 0) {
+        const err = new Error('Du hast bereits gesetzt');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      debitTokens(db, session.user.id, bet);
+      const newHands = [{ cards: [], bet, status: 'waiting' }];
+      db.prepare('UPDATE blackjack_players SET hands = ? WHERE id = ?').run(JSON.stringify(newHands), currentPlayer.id);
+    });
+    placeBet();
+
+    // Check if all players have bet after the atomic write.
+    const players = db.prepare('SELECT * FROM blackjack_players WHERE tableId = ?').all(tableId);
+    const allBet = players.every(p => {
+      const h = JSON.parse(p.hands);
+      return h.length > 0 && h[0].bet > 0;
+    });
+
+    if (allBet) {
+      const locked = db.prepare("UPDATE blackjack_tables SET status = 'dealing', updatedAt = datetime('now') WHERE id = ? AND status = 'betting'").run(tableId);
+      if (locked.changes === 1) {
+        dealCards(db, tableId);
+      }
+    }
+
+    db.prepare("UPDATE blackjack_tables SET updatedAt = datetime('now') WHERE id = ?").run(tableId);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return sendApiError(res, error);
   }
-
-  const session = await getServerSession(req, res, authOptions);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { tableId, amount } = req.body;
-  const bet = parseInt(amount);
-  if (!bet || bet < 1) return res.status(400).json({ error: 'Mindestens 1 Token' });
-
-  const db = getDb();
-
-  const table = db.prepare('SELECT * FROM blackjack_tables WHERE id = ?').get(tableId);
-  if (!table) return res.status(404).json({ error: 'Tisch nicht gefunden' });
-  if (table.status !== 'betting') return res.status(400).json({ error: 'Nicht in der Setzphase' });
-
-  const player = db.prepare('SELECT * FROM blackjack_players WHERE tableId = ? AND userId = ?').get(tableId, session.user.id);
-  if (!player) return res.status(400).json({ error: 'Du bist nicht an diesem Tisch' });
-
-  const hands = JSON.parse(player.hands);
-  if (hands.length > 0) return res.status(400).json({ error: 'Du hast bereits gesetzt' });
-
-  const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(session.user.id);
-  if (!user || user.balance < bet) return res.status(400).json({ error: 'Nicht genug Tokens' });
-
-  // Deduct bet
-  db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(bet, session.user.id);
-
-  // Set hand
-  const newHands = [{ cards: [], bet, status: 'waiting' }];
-  db.prepare('UPDATE blackjack_players SET hands = ? WHERE id = ?').run(JSON.stringify(newHands), player.id);
-
-  // Check if all players have bet → deal cards
-  const players = db.prepare('SELECT * FROM blackjack_players WHERE tableId = ?').all(tableId);
-  const allBet = players.every(p => {
-    if (p.id === player.id) return true;
-    const h = JSON.parse(p.hands);
-    return h.length > 0 && h[0].bet > 0;
-  });
-
-  if (allBet) {
-    dealCards(db, tableId);
-  }
-
-  db.prepare("UPDATE blackjack_tables SET updatedAt = datetime('now') WHERE id = ?").run(tableId);
-  return res.status(200).json({ success: true });
 }
 
 function dealCards(db, tableId) {
@@ -97,7 +117,6 @@ function dealCards(db, tableId) {
 
   // If no active players (all blackjack), go to dealer
   if (firstSeat === -1) {
-    const { playDealer } = require('@/lib/blackjack');
     // Set a dummy currentSeat beyond all players so playDealer triggers
     db.prepare('UPDATE blackjack_tables SET currentSeat = 99 WHERE id = ?').run(tableId);
     playDealer(db, tableId);

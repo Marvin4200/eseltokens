@@ -8,7 +8,9 @@ let db;
 function getDb() {
   if (!db) {
     db = new Database(dbPath);
+    db.pragma('foreign_keys = ON');
     db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 5000');
 
     db.exec(`
       CREATE TABLE IF NOT EXISTS users (
@@ -120,6 +122,16 @@ function getDb() {
 
     // Migrations — safe to run on every startup
     try { db.exec(`ALTER TABLE jackpot_games ADD COLUMN house_won INTEGER DEFAULT 0`); } catch { /* column already exists */ }
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(createdAt);
+      CREATE INDEX IF NOT EXISTS idx_crash_games_status ON crash_games(status);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_crash_bets_game_user ON crash_bets(game_id, user_id);
+      CREATE INDEX IF NOT EXISTS idx_jackpot_games_status ON jackpot_games(status);
+      CREATE INDEX IF NOT EXISTS idx_jackpot_deposits_game ON jackpot_deposits(game_id);
+      CREATE INDEX IF NOT EXISTS idx_blackjack_players_table ON blackjack_players(tableId);
+    `);
   }
   return db;
 }

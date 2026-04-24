@@ -1,6 +1,7 @@
 import getDb from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import authOptions from '@/lib/authOptions';
+import crypto from 'crypto';
 
 const DEPOSIT_DURATION  = 20000;   // 20s betting window
 const SPIN_DURATION     = 6000;    // 6s spin animation
@@ -49,7 +50,7 @@ function assignWinner(db, game) {
   for (const r of ranges) updateTicket.run(r.ticket_start, r.ticket_end, r.id);
 
   // Single spin decides everything — house wins if ticket lands in [playerShare, 1.0)
-  const winningTicket = Math.random();
+  const winningTicket = crypto.randomInt(0, 2 ** 32) / 2 ** 32;
 
   if (winningTicket >= playerShare) {
     return { houseWins: true, winningTicket, houseCut: totalPot, winnerAmount: 0 };
@@ -100,7 +101,7 @@ export default async function handler(req, res) {
           for (const dep of deposits) {
             db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(dep.amount, dep.user_id);
           }
-          db.prepare(`UPDATE jackpot_games SET status = 'finished', finished_at = ? WHERE id = ?`).run(now, game.id);
+          db.prepare(`UPDATE jackpot_games SET status = 'finished', finished_at = ? WHERE id = ? AND status = 'depositing'`).run(now, game.id);
         });
         refund();
         // Immediately create a new game
@@ -112,15 +113,17 @@ export default async function handler(req, res) {
         if (result) {
           if (result.houseWins) {
             // House wins: no player winner, house_won = 1
-            db.prepare(`UPDATE jackpot_games SET status = 'spinning', spinning_at = ?, winner_user_id = NULL, house_won = 1, winning_ticket = ?, total_pot = ?, house_cut = ? WHERE id = ?`)
+            const updated = db.prepare(`UPDATE jackpot_games SET status = 'spinning', spinning_at = ?, winner_user_id = NULL, house_won = 1, winning_ticket = ?, total_pot = ?, house_cut = ? WHERE id = ? AND status = 'depositing'`)
               .run(now, result.winningTicket, totalPot, result.houseCut, game.id);
+            if (updated.changes !== 1) return res.status(409).json({ error: 'Game state changed' });
             // All deposits are losses
             for (const dep of deposits) {
               db.prepare(`INSERT INTO transactions (fromUserId, type, amount) VALUES (?, 'jackpot_lose', ?)`).run(dep.user_id, dep.amount);
             }
           } else {
-            db.prepare(`UPDATE jackpot_games SET status = 'spinning', spinning_at = ?, winner_user_id = ?, house_won = 0, winning_ticket = ?, total_pot = ?, house_cut = ? WHERE id = ?`)
+            const updated = db.prepare(`UPDATE jackpot_games SET status = 'spinning', spinning_at = ?, winner_user_id = ?, house_won = 0, winning_ticket = ?, total_pot = ?, house_cut = ? WHERE id = ? AND status = 'depositing'`)
               .run(now, result.winner.user_id, result.winningTicket, totalPot, result.houseCut, game.id);
+            if (updated.changes !== 1) return res.status(409).json({ error: 'Game state changed' });
             // Record jackpot_lose for non-winners
             const nonWinners = deposits.filter(d => d.user_id !== result.winner.user_id);
             for (const dep of nonWinners) {
@@ -138,6 +141,9 @@ export default async function handler(req, res) {
     const spinElapsed = now - game.spinning_at;
     if (spinElapsed >= SPIN_DURATION) {
       const finish = db.transaction(() => {
+        const locked = db.prepare(`UPDATE jackpot_games SET status = 'finished', finished_at = ? WHERE id = ? AND status = 'spinning'`).run(now, game.id);
+        if (locked.changes !== 1) return;
+
         if (!game.house_won && game.winner_user_id) {
           // Pay out player winner
           const winnerAmount = game.total_pot - game.house_cut;
@@ -145,7 +151,6 @@ export default async function handler(req, res) {
           db.prepare(`INSERT INTO transactions (fromUserId, type, amount) VALUES (?, 'jackpot_win', ?)`).run(game.winner_user_id, winnerAmount);
         }
         // If house_won, tokens stay in the house — no payout needed
-        db.prepare(`UPDATE jackpot_games SET status = 'finished', finished_at = ? WHERE id = ?`).run(now, game.id);
       });
       finish();
       game = db.prepare('SELECT * FROM jackpot_games WHERE id = ?').get(game.id);

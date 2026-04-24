@@ -1,6 +1,7 @@
 import getDb from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import authOptions from '@/lib/authOptions';
+import { advanceGame } from '@/lib/blackjack';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -41,7 +42,6 @@ export default async function handler(req, res) {
 
     // If it was this player's turn during playing, advance the game
     if (table && table.status === 'playing' && table.currentSeat === player.seatIndex) {
-      const { advanceGame } = require('@/lib/blackjack');
       advanceGame(db, tableId);
     }
   }

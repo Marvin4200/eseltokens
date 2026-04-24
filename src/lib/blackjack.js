@@ -18,7 +18,7 @@ export function createDeck(numDecks = 2) {
 export function shuffleDeck(deck) {
   const arr = [...deck];
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = crypto.randomBytes(4).readUInt32BE(0) % (i + 1);
+    const j = crypto.randomInt(i + 1);
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
@@ -125,11 +125,8 @@ export function playDealer(db, tableId) {
   for (const player of players) {
     const hands = JSON.parse(player.hands);
     let totalPayout = 0;
-    let totalBet = 0;
 
     for (const hand of hands) {
-      totalBet += hand.bet;
-
       if (hand.status === 'busted') {
         hand.status = 'lost';
         // Record loss

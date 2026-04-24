@@ -1,7 +1,6 @@
 import getDb from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import authOptions from '@/lib/authOptions';
-import { createDeck, drawCard, calculateHand } from '@/lib/blackjack';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

@@ -1,21 +1,41 @@
 import getDb from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import authOptions from '@/lib/authOptions';
+import { methodAllowed, parseId, parseNonNegativeInt, requireSession, sendApiError } from '@/lib/apiGuards';
+import { recordTransaction } from '@/lib/tokenLedger';
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session || session.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+  if (!methodAllowed(req, res, ['POST'])) return;
+  const session = await requireSession(req, res, ['admin']);
+  if (!session) return;
 
-  const db = getDb();
-
-  if (req.method === 'POST') {
+  try {
+    const db = getDb();
     const { userId, balance } = req.body;
-    db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(balance, userId);
-    res.status(200).json({ success: true });
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    const id = parseId(userId, 'userId');
+    const safeBalance = parseNonNegativeInt(balance, 'balance');
+
+    const adjust = db.transaction(() => {
+      const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(id);
+      if (!user) {
+        const err = new Error('User not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(safeBalance, id);
+      const delta = safeBalance - Number(user.balance || 0);
+      if (delta !== 0) {
+        recordTransaction(db, {
+          fromUserId: session.user.id,
+          toUserId: id,
+          type: delta > 0 ? 'admin_grant' : 'admin_remove',
+          amount: Math.abs(delta),
+        });
+      }
+    });
+    adjust();
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return sendApiError(res, error);
   }
 }

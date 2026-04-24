@@ -1,17 +1,15 @@
 import getDb from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import authOptions from '@/lib/authOptions';
+import { methodAllowed, parseId, requireSession, sendApiError } from '@/lib/apiGuards';
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session || (session.user.role !== 'moderator' && session.user.role !== 'admin')) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+  if (!methodAllowed(req, res, ['POST'])) return;
+  const session = await requireSession(req, res, ['moderator', 'admin']);
+  if (!session) return;
 
-  const db = getDb();
-
-  if (req.method === 'POST') {
+  try {
+    const db = getDb();
     const { userId, role } = req.body;
+    const id = parseId(userId, 'userId');
 
     // Moderators can only set pending <-> member
     if (!['pending', 'member'].includes(role)) {
@@ -19,7 +17,7 @@ export default async function handler(req, res) {
     }
 
     // Don't allow changing admin or moderator users
-    const targetUser = db.prepare('SELECT role FROM users WHERE id = ?').get(userId);
+    const targetUser = db.prepare('SELECT role FROM users WHERE id = ?').get(id);
     if (!targetUser) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -27,10 +25,9 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Cannot change role of admins or moderators' });
     }
 
-    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
-    res.status(200).json({ success: true });
-  } else {
-    res.setHeader('Allow', ['POST']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return sendApiError(res, error);
   }
 }
