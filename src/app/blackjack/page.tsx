@@ -397,7 +397,6 @@ export default function BlackjackPage() {
                     { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                     { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
                     { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: true },
-                    { href: '/slots', icon: '🎰', label: 'Slots', current: false },
                   ].map(item => (
                     <button
                       key={item.href}
@@ -724,7 +723,6 @@ export default function BlackjackPage() {
                   { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                   { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
                   { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: true },
-                  { href: '/slots', icon: '🎰', label: 'Slots', current: false },
                 ].map(item => (
                   <button
                     key={item.href}

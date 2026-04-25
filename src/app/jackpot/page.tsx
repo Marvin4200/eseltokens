@@ -384,7 +384,6 @@ export default function JackpotPage() {
                   { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                   { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: true },
                   { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: false },
-                  { href: '/slots', icon: '🎰', label: 'Slots', current: false },
                 ].map(item => (
                   <button
                     key={item.href}

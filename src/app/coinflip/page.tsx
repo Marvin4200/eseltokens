@@ -150,7 +150,6 @@ export default function CoinflipPage() {
                   { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: true },
                   { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
                   { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: false },
-                  { href: '/slots', icon: '🎰', label: 'Slots', current: false },
                 ].map(item => (
                   <button
                     key={item.href}

@@ -69,8 +69,6 @@ interface Transaction {
     | 'redeem'
     | 'coinflip_win'
     | 'coinflip_lose'
-    | 'slots_win'
-    | 'slots_lose'
     | 'blackjack_win'
     | 'blackjack_lose'
     | 'crash_win'
@@ -319,7 +317,6 @@ export default function Dashboard() {
                     { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                     { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
                     { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: false },
-                    { href: '/slots', icon: '🎰', label: 'Slots', current: false },
                   ].map(item => (
                     <button
                       key={item.href}
@@ -421,63 +418,59 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── REWARDS ── */}
-        <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden mt-4">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/5 rounded-full blur-[50px]" />
-          <div className="relative">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
+        {/* ── TOKEN ACTIONS: Gift + Redeem ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+
+          {/* Rewards card */}
+          <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden">
+            <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-amber-500/5 rounded-full blur-[40px]" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-base">🎁</div>
                 <h2 className="text-lg font-bold text-white">Rewards</h2>
               </div>
-              {rewardMsg && <span className="text-xs text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">{rewardMsg}</span>}
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-widest">Starter Pack</p>
-                <p className="text-sm text-gray-300 mt-1">Einmalig beim ersten Login.</p>
+              <div className="space-y-2 text-sm text-gray-400">
+                <p><span className="text-gray-300 font-medium">Starter Pack</span> ist einmalig beim ersten Login.</p>
+                <p><span className="text-gray-300 font-medium">Daily</span> ist alle 24h.</p>
+                <p><span className="text-gray-300 font-medium">Vote</span> ist alle 12h (top.gg).</p>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-widest">Daily Reward</p>
-                <button
-                  onClick={claimDaily}
-                  disabled={claimingDaily}
-                  className="mt-3 w-full btn-gold inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              {rewardMsg && (
+                <div className="mt-4 text-xs text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                  {rewardMsg}
+                </div>
+              )}
+
+              <button
+                onClick={claimDaily}
+                disabled={claimingDaily}
+                className="mt-4 w-full btn-gold inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {claimingDaily ? '...' : 'Claim Daily'}
+              </button>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <a
+                  href={voteUrl || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`btn-chip text-center ${voteUrl ? '' : 'opacity-40 pointer-events-none'}`}
+                  title={voteUrl ? 'Open top.gg Vote' : 'Set NEXT_PUBLIC_TOPGG_VOTE_URL'}
                 >
-                  {claimingDaily ? '...' : 'Claim Daily'}
+                  Vote
+                </a>
+                <button
+                  onClick={claimVote}
+                  disabled={claimingVote}
+                  className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {claimingVote ? '...' : 'Claim'}
                 </button>
               </div>
-
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-widest">Vote (Fahrstuhl Bot)</p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <a
-                    href={voteUrl || '#'}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`btn-chip text-center ${voteUrl ? '' : 'opacity-40 pointer-events-none'}`}
-                    title={voteUrl ? 'Open top.gg Vote' : 'Set NEXT_PUBLIC_TOPGG_VOTE_URL'}
-                  >
-                    Vote
-                  </a>
-                  <button
-                    onClick={claimVote}
-                    disabled={claimingVote}
-                    className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {claimingVote ? '...' : 'Claim'}
-                  </button>
-                </div>
-                {!voteUrl && <p className="text-[11px] text-gray-600 mt-2">Vote-Link fehlt (Env).</p>}
-              </div>
+              {!voteUrl && <p className="text-[11px] text-gray-600 mt-2">Vote-Link fehlt (Env).</p>}
             </div>
           </div>
-        </div>
-
-        {/* ── TOKEN ACTIONS: Gift + Redeem ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
 
           {/* Gift card */}
           <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden">
@@ -738,7 +731,7 @@ export default function Dashboard() {
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <span className="mt-0.5 text-base">
-                    {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'slots_win' || tx.type === 'slots_lose' ? '🎰' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
+                    {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_starter_pack' ? '🎁' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-300">
@@ -750,10 +743,12 @@ export default function Dashboard() {
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> 🪙</>
                         : tx.type === 'coinflip_lose'
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> 🪙</>
-                        : tx.type === 'slots_win'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei Slots 🎰</>
-                        : tx.type === 'slots_lose'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> bei Slots 🎰</>
+                        : tx.type === 'reward_starter_pack'
+                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Starter Pack</>
+                        : tx.type === 'reward_daily'
+                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> claimte <span className="text-green-400 font-medium">{tx.amount}</span> Daily</>
+                        : tx.type === 'reward_topgg_vote'
+                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Vote Reward</>
                         : tx.type === 'blackjack_win'
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei BJ 🃏</>
                         : tx.type === 'blackjack_lose'
@@ -777,13 +772,13 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                    tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'slots_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win'
+                    tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote'
                       ? 'bg-green-500/10 text-green-400'
-                      : tx.type === 'redeem' || tx.type === 'coinflip_lose' || tx.type === 'slots_lose' || tx.type === 'blackjack_lose' || tx.type === 'crash_lose' || tx.type === 'jackpot_lose'
+                      : tx.type === 'redeem' || tx.type === 'coinflip_lose' || tx.type === 'blackjack_lose' || tx.type === 'crash_lose' || tx.type === 'jackpot_lose'
                       ? 'bg-red-500/10 text-red-400'
                       : 'bg-amber-500/10 text-amber-400'
                   }`}>
-                    {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'slots_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
+                    {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
                   </span>
                 </div>
               ))}
