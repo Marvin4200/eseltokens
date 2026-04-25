@@ -99,6 +99,45 @@ body::before {
   100% { transform: rotate(360deg); }
 }
 
+/* ── Slots ── */
+.slots-frame {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15));
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 20px 80px rgba(0,0,0,0.45);
+}
+
+.slots-reel {
+  width: clamp(70px, 18vw, 120px);
+  height: clamp(80px, 20vw, 140px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(2.25rem, 9vw, 3.5rem);
+  border-radius: 1.1rem;
+  background: radial-gradient(circle at 50% 25%, rgba(245,158,11,0.10), rgba(139,92,246,0.06) 45%, rgba(0,0,0,0.35) 100%);
+  border: 1px solid rgba(139,92,246,0.18);
+  text-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  will-change: transform, filter;
+}
+
+@keyframes reelSpin {
+  0% { transform: translateY(0) scale(1); filter: blur(0px); }
+  20% { transform: translateY(-2px) scale(1.02); filter: blur(0.2px); }
+  40% { transform: translateY(2px) scale(0.99); filter: blur(0.4px); }
+  60% { transform: translateY(-1px) scale(1.02); filter: blur(0.3px); }
+  80% { transform: translateY(1px) scale(1); filter: blur(0.2px); }
+  100% { transform: translateY(0) scale(1); filter: blur(0px); }
+}
+
+.slots-reel-spin {
+  animation: reelSpin 0.18s linear infinite;
+}
+
 /* ── Utility Classes ── */
 .animate-fade-in-up {
   animation: fadeInUp 0.6s ease-out both;

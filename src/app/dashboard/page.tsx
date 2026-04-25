@@ -64,7 +64,7 @@ interface Transaction {
   id: number;
   fromUsername: string;
   toUsername?: string;
-  type: 'give' | 'redeem' | 'coinflip_win' | 'coinflip_lose' | 'blackjack_win' | 'blackjack_lose' | 'crash_win' | 'crash_lose' | 'jackpot_win' | 'jackpot_lose';
+  type: 'give' | 'redeem' | 'coinflip_win' | 'coinflip_lose' | 'slots_win' | 'slots_lose' | 'blackjack_win' | 'blackjack_lose' | 'crash_win' | 'crash_lose' | 'jackpot_win' | 'jackpot_lose';
   amount: number;
   createdAt: string;
 }
@@ -244,13 +244,14 @@ export default function Dashboard() {
             <div className="border-t border-white/5 bg-black/60 backdrop-blur-xl">
               <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
                 <p className="text-xs text-gray-600 uppercase tracking-widest mb-3">Spiele</p>
-                <div className="grid grid-cols-5 gap-2 mb-4">
+                <div className="grid grid-cols-6 gap-2 mb-4">
                   {[
                     { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: true },
                     { href: '/crash', icon: '📈', label: 'Crash', current: false },
                     { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                     { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
                     { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: false },
+                    { href: '/slots', icon: '🎰', label: 'Slots', current: false },
                   ].map(item => (
                     <button
                       key={item.href}
@@ -614,7 +615,7 @@ export default function Dashboard() {
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <span className="mt-0.5 text-base">
-                    {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
+                    {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'slots_win' || tx.type === 'slots_lose' ? '🎰' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-300">
@@ -626,6 +627,10 @@ export default function Dashboard() {
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> 🪙</>
                         : tx.type === 'coinflip_lose'
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> 🪙</>
+                        : tx.type === 'slots_win'
+                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei Slots 🎰</>
+                        : tx.type === 'slots_lose'
+                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> bei Slots 🎰</>
                         : tx.type === 'blackjack_win'
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei BJ 🃏</>
                         : tx.type === 'blackjack_lose'
@@ -649,13 +654,13 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                    tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win'
+                    tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'slots_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win'
                       ? 'bg-green-500/10 text-green-400'
-                      : tx.type === 'redeem' || tx.type === 'coinflip_lose' || tx.type === 'blackjack_lose' || tx.type === 'crash_lose' || tx.type === 'jackpot_lose'
+                      : tx.type === 'redeem' || tx.type === 'coinflip_lose' || tx.type === 'slots_lose' || tx.type === 'blackjack_lose' || tx.type === 'crash_lose' || tx.type === 'jackpot_lose'
                       ? 'bg-red-500/10 text-red-400'
                       : 'bg-amber-500/10 text-amber-400'
                   }`}>
-                    {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
+                    {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'slots_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
                   </span>
                 </div>
               ))}
