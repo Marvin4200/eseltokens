@@ -3,18 +3,21 @@ import crypto from 'crypto';
 import { methodAllowed, parseTokenAmount, requireSession, sendApiError } from '@/lib/apiGuards';
 import { creditTokens, debitTokens, recordTransaction } from '@/lib/tokenLedger';
 
-// Simple 3-reel slot machine.
+// Simple 5x5 slot machine (5 reels, 5 visible rows).
 // Uses secure randomness and a deterministic paytable (house edge via expected value).
 const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣'];
 
-// Payouts in percent of bet to avoid floating point issues (e.g. 120 = 1.2x credit).
-// Note: We intentionally keep win frequency lower than "any two match".
-// Pairs pay small, triples pay meaningful, 7️⃣ is the rare/high payout symbol.
-const PAYOUT_PAIR_PCT = [110, 110, 115, 120, 130, 150, 180];
-const PAYOUT_TRIPLE_PCT = [400, 450, 550, 700, 1000, 1600, 4200];
+// Payouts in percent of bet to avoid floating point issues (e.g. 160 = 1.6x credit).
+// Win rule: only pay for a left-to-right streak on the payline (middle row),
+// starting from reel 1. (3/4/5 in a row)
+const PAYOUT_3_PCT = [120, 120, 130, 140, 160, 220, 320];
+const PAYOUT_4_PCT = [220, 230, 250, 280, 340, 520, 820];
+const PAYOUT_5_PCT = [450, 520, 620, 760, 980, 1800, 4200];
 
 function spinReels() {
   return [
+    crypto.randomInt(0, SYMBOLS.length),
+    crypto.randomInt(0, SYMBOLS.length),
     crypto.randomInt(0, SYMBOLS.length),
     crypto.randomInt(0, SYMBOLS.length),
     crypto.randomInt(0, SYMBOLS.length),
@@ -22,21 +25,18 @@ function spinReels() {
 }
 
 function evaluateSpin(reelIdx) {
-  const [a, b, c] = reelIdx;
-
-  if (a === b && b === c) {
-    return {
-      outcome: 'triple',
-      symbolIndex: a,
-      payoutPct: PAYOUT_TRIPLE_PCT[a],
-    };
+  const a = reelIdx[0];
+  let streak = 1;
+  for (let i = 1; i < reelIdx.length; i++) {
+    if (reelIdx[i] === a) streak += 1;
+    else break;
   }
 
-  // Lower win frequency: only pay for a left-adjacent pair (reel 1 + reel 2).
-  // This avoids the very frequent "any two match" wins.
-  if (a === b) return { outcome: 'pair', symbolIndex: a, payoutPct: PAYOUT_PAIR_PCT[a] };
+  if (streak >= 5) return { outcome: 'triple', symbolIndex: a, payoutPct: PAYOUT_5_PCT[a], streak };
+  if (streak === 4) return { outcome: 'triple', symbolIndex: a, payoutPct: PAYOUT_4_PCT[a], streak };
+  if (streak === 3) return { outcome: 'pair', symbolIndex: a, payoutPct: PAYOUT_3_PCT[a], streak };
 
-  return { outcome: 'lose', symbolIndex: null, payoutPct: 0 };
+  return { outcome: 'lose', symbolIndex: null, payoutPct: 0, streak };
 }
 
 export default async function handler(req, res) {
@@ -76,6 +76,7 @@ export default async function handler(req, res) {
       matchedSymbol: evaluation.symbolIndex === null ? null : SYMBOLS[evaluation.symbolIndex],
       payout,
       payoutPct: evaluation.payoutPct,
+      streak: evaluation.streak,
       newBalance,
     });
   } catch (error) {

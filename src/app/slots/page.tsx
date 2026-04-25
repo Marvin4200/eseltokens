@@ -8,17 +8,20 @@ import { apiPath } from '@/lib/clientPaths';
 type Outcome = 'triple' | 'pair' | 'lose';
 
 const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣'];
-const VISIBLE_PER_REEL = 5; // more "fields" visible
-const SPIN_MIN_MS = 1400;
-const SPIN_MAX_MS = 2000;
+const REELS = 5;
+const VISIBLE_PER_REEL = 5; // 5x5 visible grid
+const SPIN_MIN_MS = 1600;
+const SPIN_MAX_MS = 2400;
+const RESULT_HOLD_MS = 1100; // keep result visible before autospin continues
 
 interface SlotsResponse {
   bet: number;
-  reels: [string, string, string];
+  reels: [string, string, string, string, string];
   outcome: Outcome;
   matchedSymbol: string | null;
   payout: number;
   payoutPct: number;
+  streak?: number;
   newBalance: number;
 }
 
@@ -33,9 +36,13 @@ export default function SlotsPage() {
   const [spinning, setSpinning] = useState(false);
   const [autoSpin, setAutoSpin] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [soundVol, setSoundVol] = useState(0.18); // 0..1
+  const [autoDelayMs, setAutoDelayMs] = useState(1400);
 
   // Each reel is a "strip" of visible symbols. The payline is the center index.
-  const [reelStrips, setReelStrips] = useState<[string[], string[], string[]]>([
+  const [reelStrips, setReelStrips] = useState<[string[], string[], string[], string[], string[]]>([
+    Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
+    Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
     Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
     Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
     Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
@@ -47,7 +54,7 @@ export default function SlotsPage() {
   const initialLoadRef = useRef(true);
   const autoSpinRef = useRef(false);
   const spinTimeoutRef = useRef<number | null>(null);
-  const stopSoundRef = useRef<null | (() => void)>(null);
+  const spinSoundStopRef = useRef<null | (() => void)>(null);
 
   useEffect(() => {
     if (status !== 'loading') initialLoadRef.current = false;
@@ -82,24 +89,35 @@ export default function SlotsPage() {
     return strip;
   };
 
-  const beep = async (freq: number, ms: number, type: OscillatorType = 'sine', gain = 0.035) => {
-    if (!soundOn) return null;
+  const quickTone = async (opts: { freq: number; ms: number; type?: OscillatorType; gain?: number; sweepTo?: number }) => {
+    if (!soundOn || soundVol <= 0) return null;
     try {
       const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
       if (!Ctx) return null;
       const ctx = new Ctx();
       const o = ctx.createOscillator();
       const g = ctx.createGain();
-      o.type = type;
-      o.frequency.value = freq;
-      g.gain.value = gain;
+      o.type = opts.type ?? 'sine';
+      o.frequency.value = opts.freq;
+
+      const baseGain = (opts.gain ?? 0.04) * soundVol;
+      const now = ctx.currentTime;
+      g.gain.setValueAtTime(0.00001, now);
+      g.gain.exponentialRampToValueAtTime(baseGain, now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.00001, now + Math.max(0.02, opts.ms / 1000));
+
+      if (typeof opts.sweepTo === 'number') {
+        o.frequency.setValueAtTime(opts.freq, now);
+        o.frequency.exponentialRampToValueAtTime(Math.max(10, opts.sweepTo), now + Math.max(0.02, opts.ms / 1000));
+      }
+
       o.connect(g);
       g.connect(ctx.destination);
       o.start();
       const t = window.setTimeout(() => {
         try { o.stop(); } catch {}
         try { ctx.close(); } catch {}
-      }, ms);
+      }, opts.ms);
       return () => {
         window.clearTimeout(t);
         try { o.stop(); } catch {}
@@ -108,6 +126,19 @@ export default function SlotsPage() {
     } catch {
       return null;
     }
+  };
+
+  const sfx = {
+    spinTick: () => quickTone({ freq: 520, sweepTo: 240, ms: 55, type: 'triangle', gain: 0.06 }),
+    stopTick: () => quickTone({ freq: 360, sweepTo: 180, ms: 65, type: 'triangle', gain: 0.07 }),
+    win: async (big: boolean) => {
+      await quickTone({ freq: big ? 784 : 659, ms: 120, type: 'sine', gain: 0.08 });
+      await quickTone({ freq: big ? 988 : 784, ms: 110, type: 'sine', gain: 0.08 });
+      await quickTone({ freq: big ? 1319 : 988, ms: 140, type: 'sine', gain: 0.09 });
+    },
+    lose: async () => {
+      await quickTone({ freq: 220, sweepTo: 110, ms: 140, type: 'sine', gain: 0.08 });
+    },
   };
 
   const doSpin = async () => {
@@ -122,12 +153,21 @@ export default function SlotsPage() {
         Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
         Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
         Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
+        Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
+        Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
       ]);
     }, 70);
 
-    // Spin sound (continuous-ish), stopped once result is applied.
-    stopSoundRef.current?.();
-    stopSoundRef.current = (await beep(150, SPIN_MAX_MS + 300, 'square', 0.02)) || null;
+    // No more loud "hum": we only do small ticks.
+    spinSoundStopRef.current?.();
+    let ticksAlive = true;
+    const tickLoop = async () => {
+      while (ticksAlive) {
+        await sfx.spinTick();
+        await new Promise(r => window.setTimeout(r, 210));
+      }
+    };
+    tickLoop();
 
     try {
       const res = await fetch(apiPath('/api/tokens/slots'), {
@@ -139,16 +179,38 @@ export default function SlotsPage() {
       if (!res.ok) {
         window.clearInterval(interval);
         setSpinning(false);
-        stopSoundRef.current?.();
+        ticksAlive = false;
         return;
       }
 
       const wait = Math.floor(Math.random() * (SPIN_MAX_MS - SPIN_MIN_MS + 1)) + SPIN_MIN_MS;
       window.setTimeout(async () => {
         window.clearInterval(interval);
-        stopSoundRef.current?.();
+        ticksAlive = false;
 
-        setReelStrips([makeStrip(data.reels[0]), makeStrip(data.reels[1]), makeStrip(data.reels[2])]);
+        // Apply result columns one-by-one for a more "real" stop feel.
+        const strips: [string[], string[], string[], string[], string[]] = [
+          makeStrip(data.reels[0]),
+          makeStrip(data.reels[1]),
+          makeStrip(data.reels[2]),
+          makeStrip(data.reels[3]),
+          makeStrip(data.reels[4]),
+        ];
+        setReelStrips(prev => [strips[0], prev[1], prev[2], prev[3], prev[4]]);
+        await sfx.stopTick();
+        await new Promise(r => window.setTimeout(r, 120));
+        setReelStrips(prev => [strips[0], strips[1], prev[2], prev[3], prev[4]]);
+        await sfx.stopTick();
+        await new Promise(r => window.setTimeout(r, 120));
+        setReelStrips(prev => [strips[0], strips[1], strips[2], prev[3], prev[4]]);
+        await sfx.stopTick();
+        await new Promise(r => window.setTimeout(r, 120));
+        setReelStrips(prev => [strips[0], strips[1], strips[2], strips[3], prev[4]]);
+        await sfx.stopTick();
+        await new Promise(r => window.setTimeout(r, 120));
+        setReelStrips(strips);
+        await sfx.stopTick();
+
         setBalance(data.newBalance);
         setLast(data);
         setHistory(prev => [{ outcome: data.outcome, payout: data.payout, bet: data.bet }, ...prev].slice(0, 12));
@@ -157,16 +219,16 @@ export default function SlotsPage() {
 
         // Result sfx.
         if (data.payout > 0) {
-          await beep(data.outcome === 'triple' ? 880 : 660, 140, 'triangle', 0.05);
-          await beep(data.outcome === 'triple' ? 990 : 740, 120, 'triangle', 0.05);
+          const big = (data.streak ?? 0) >= 4 || data.outcome === 'triple';
+          await sfx.win(big);
         } else {
-          await beep(220, 120, 'sawtooth', 0.03);
+          await sfx.lose();
         }
       }, wait);
     } catch {
       window.clearInterval(interval);
       setSpinning(false);
-      stopSoundRef.current?.();
+      ticksAlive = false;
     }
   };
 
@@ -176,11 +238,6 @@ export default function SlotsPage() {
       if (spinTimeoutRef.current) window.clearTimeout(spinTimeoutRef.current);
       spinTimeoutRef.current = null;
       return;
-    }
-
-    // kick
-    if (!spinning && bet >= 1 && bet <= balance) {
-      spinTimeoutRef.current = window.setTimeout(() => doSpin(), 250);
     }
   }, [autoSpin]);
 
@@ -192,13 +249,15 @@ export default function SlotsPage() {
       setAutoSpin(false);
       return;
     }
-    spinTimeoutRef.current = window.setTimeout(() => doSpin(), 650);
+
+    // Keep result visible and don't "skip" the animation.
+    spinTimeoutRef.current = window.setTimeout(() => doSpin(), Math.max(RESULT_HOLD_MS, autoDelayMs));
   }, [spinning, balance, bet]);
 
   useEffect(() => {
     return () => {
       if (spinTimeoutRef.current) window.clearTimeout(spinTimeoutRef.current);
-      stopSoundRef.current?.();
+      spinSoundStopRef.current?.();
     };
   }, []);
 
@@ -303,7 +362,7 @@ export default function SlotsPage() {
         <div className="mb-2 hidden lg:flex items-center gap-3">
           <span className="text-3xl">🎰</span>
           <h1 className="text-2xl font-bold text-white">Slots</h1>
-          <span className="text-gray-600 text-sm ml-2">3 Walzen, Pair oder Triple</span>
+          <span className="text-gray-600 text-sm ml-2">5x5, Gewinn nur als Streak von links</span>
         </div>
 
         {history.length > 0 && (
@@ -355,7 +414,7 @@ export default function SlotsPage() {
                 {resultText ? (
                   <p className={`text-2xl sm:text-3xl font-black animate-result-pop ${resultClass}`}>{resultText}</p>
                 ) : (
-                  <p className="text-sm text-gray-500">Pair (links) zahlt klein, Triple zahlt fett.</p>
+                  <p className="text-sm text-gray-500">Du gewinnst nur mit 3, 4 oder 5 gleichen Symbolen von links.</p>
                 )}
                 {last && last.payout > 0 && (
                   <p className="text-xs text-gray-500 mt-1">
@@ -400,6 +459,34 @@ export default function SlotsPage() {
                 </button>
               </div>
 
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">Auto Delay</p>
+                  <select
+                    value={autoDelayMs}
+                    onChange={e => setAutoDelayMs(parseInt(e.target.value, 10))}
+                    className="mt-1 w-full bg-black/10 text-white text-sm rounded-lg px-2 py-1 border border-white/10 outline-none"
+                  >
+                    <option value={2200}>Slow</option>
+                    <option value={1400}>Normal</option>
+                    <option value={900}>Fast</option>
+                  </select>
+                </div>
+                <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">Volume</p>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={soundVol}
+                    onChange={e => setSoundVol(parseFloat(e.target.value))}
+                    className="mt-2 w-full"
+                    disabled={!soundOn}
+                  />
+                </div>
+              </div>
+
               <button
                 onClick={doSpin}
                 disabled={!canSpin}
@@ -414,22 +501,22 @@ export default function SlotsPage() {
               <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Paytable</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>🍒🍒</span><span className="text-amber-300 font-bold">1.1x</span>
+                  <span>🍒🍒🍒</span><span className="text-amber-300 font-bold">1.2x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>🍒🍒🍒</span><span className="text-amber-300 font-bold">4x</span>
+                  <span>🍒🍒🍒🍒</span><span className="text-amber-300 font-bold">2.2x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>💎💎</span><span className="text-amber-300 font-bold">1.5x</span>
+                  <span>💎💎💎</span><span className="text-amber-300 font-bold">2.2x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>💎💎💎</span><span className="text-amber-300 font-bold">16x</span>
+                  <span>💎💎💎💎</span><span className="text-amber-300 font-bold">5.2x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>7️⃣7️⃣</span><span className="text-amber-300 font-bold">1.8x</span>
+                  <span>7️⃣7️⃣7️⃣</span><span className="text-amber-300 font-bold">3.2x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>7️⃣7️⃣7️⃣</span><span className="text-amber-300 font-bold">42x</span>
+                  <span>7️⃣7️⃣7️⃣7️⃣7️⃣</span><span className="text-amber-300 font-bold">42x</span>
                 </div>
               </div>
               <p className="text-[11px] text-gray-600 mt-3">Payouts sind als Credit-Multiplikator auf deinen Einsatz gerechnet.</p>
