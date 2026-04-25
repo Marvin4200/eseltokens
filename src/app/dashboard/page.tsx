@@ -64,7 +64,22 @@ interface Transaction {
   id: number;
   fromUsername: string;
   toUsername?: string;
-  type: 'give' | 'redeem' | 'coinflip_win' | 'coinflip_lose' | 'slots_win' | 'slots_lose' | 'blackjack_win' | 'blackjack_lose' | 'crash_win' | 'crash_lose' | 'jackpot_win' | 'jackpot_lose';
+  type:
+    | 'give'
+    | 'redeem'
+    | 'coinflip_win'
+    | 'coinflip_lose'
+    | 'slots_win'
+    | 'slots_lose'
+    | 'blackjack_win'
+    | 'blackjack_lose'
+    | 'crash_win'
+    | 'crash_lose'
+    | 'jackpot_win'
+    | 'jackpot_lose'
+    | 'reward_starter_pack'
+    | 'reward_daily'
+    | 'reward_topgg_vote';
   amount: number;
   createdAt: string;
 }
@@ -83,6 +98,9 @@ export default function Dashboard() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'level' | 'tokens'>('level');
+  const [rewardMsg, setRewardMsg] = useState<string | null>(null);
+  const [claimingDaily, setClaimingDaily] = useState(false);
+  const [claimingVote, setClaimingVote] = useState(false);
   const userRole = (session?.user as any)?.role;
 
   useEffect(() => {
@@ -125,6 +143,56 @@ export default function Dashboard() {
     const res = await fetch(apiPath('/api/transactions'));
     const data = await res.json();
     setTransactions(Array.isArray(data) ? data : []);
+  };
+
+  const voteUrl = (process.env.NEXT_PUBLIC_TOPGG_VOTE_URL || '').trim();
+
+  const claimDaily = async () => {
+    if (claimingDaily) return;
+    setClaimingDaily(true);
+    setRewardMsg(null);
+    try {
+      const res = await fetch(apiPath('/api/tokens/daily'), { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data?.nextClaimAt) {
+          setRewardMsg('Daily ist noch im Cooldown.');
+        } else {
+          setRewardMsg(data?.error || 'Daily claim fehlgeschlagen.');
+        }
+        return;
+      }
+      setRewardMsg(`Daily: +${data.amount} Tokens`);
+      await update();
+      fetchTransactions();
+    } finally {
+      setClaimingDaily(false);
+    }
+  };
+
+  const claimVote = async () => {
+    if (claimingVote) return;
+    setClaimingVote(true);
+    setRewardMsg(null);
+    try {
+      const res = await fetch(apiPath('/api/tokens/vote'), { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data?.voteUrl) {
+          setRewardMsg('Kein Vote gefunden. Vote zuerst auf top.gg und versuch es dann nochmal.');
+        } else if (data?.nextClaimAt) {
+          setRewardMsg('Vote-Reward ist noch im Cooldown.');
+        } else {
+          setRewardMsg(data?.error || 'Vote claim fehlgeschlagen.');
+        }
+        return;
+      }
+      setRewardMsg(`Vote: +${data.amount} Tokens`);
+      await update();
+      fetchTransactions();
+    } finally {
+      setClaimingVote(false);
+    }
   };
 
   const giveToken = async () => {
@@ -349,6 +417,61 @@ export default function Dashboard() {
               <p className="text-xs text-gray-600 mt-1">
                 {Math.ceil((levelInfo.xpNeeded - levelInfo.currentXp) / 10)} Tokens bis Level {levelInfo.level + 1}
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── REWARDS ── */}
+        <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden mt-4">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/5 rounded-full blur-[50px]" />
+          <div className="relative">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-base">🎁</div>
+                <h2 className="text-lg font-bold text-white">Rewards</h2>
+              </div>
+              {rewardMsg && <span className="text-xs text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">{rewardMsg}</span>}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-widest">Starter Pack</p>
+                <p className="text-sm text-gray-300 mt-1">Einmalig beim ersten Login.</p>
+              </div>
+
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-widest">Daily Reward</p>
+                <button
+                  onClick={claimDaily}
+                  disabled={claimingDaily}
+                  className="mt-3 w-full btn-gold inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {claimingDaily ? '...' : 'Claim Daily'}
+                </button>
+              </div>
+
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-widest">Vote (Fahrstuhl Bot)</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <a
+                    href={voteUrl || '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`btn-chip text-center ${voteUrl ? '' : 'opacity-40 pointer-events-none'}`}
+                    title={voteUrl ? 'Open top.gg Vote' : 'Set NEXT_PUBLIC_TOPGG_VOTE_URL'}
+                  >
+                    Vote
+                  </a>
+                  <button
+                    onClick={claimVote}
+                    disabled={claimingVote}
+                    className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {claimingVote ? '...' : 'Claim'}
+                  </button>
+                </div>
+                {!voteUrl && <p className="text-[11px] text-gray-600 mt-2">Vote-Link fehlt (Env).</p>}
+              </div>
             </div>
           </div>
         </div>

@@ -123,6 +123,22 @@ function getDb() {
     // Migrations — safe to run on every startup
     try { db.exec(`ALTER TABLE jackpot_games ADD COLUMN house_won INTEGER DEFAULT 0`); } catch { /* column already exists */ }
 
+    // Reward state table (cooldowns/one-time rewards). Integers are epoch-ms.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS reward_state (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        rewardKey TEXT NOT NULL,
+        lastClaimAt INTEGER NOT NULL,
+        claimCount INTEGER DEFAULT 1,
+        meta TEXT,
+        createdAt TEXT DEFAULT (datetime('now')),
+        updatedAt TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(userId, rewardKey)
+      );
+    `);
+
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
       CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(createdAt);
@@ -131,6 +147,7 @@ function getDb() {
       CREATE INDEX IF NOT EXISTS idx_jackpot_games_status ON jackpot_games(status);
       CREATE INDEX IF NOT EXISTS idx_jackpot_deposits_game ON jackpot_deposits(game_id);
       CREATE INDEX IF NOT EXISTS idx_blackjack_players_table ON blackjack_players(tableId);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_state_user_key ON reward_state(userId, rewardKey);
     `);
   }
   return db;
