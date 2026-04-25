@@ -28,7 +28,11 @@ export default function SlotsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [spinning, setSpinning] = useState(false);
-  const [reels, setReels] = useState<[string, string, string]>(['🍒', '🍒', '🍒']);
+  const [reels, setReels] = useState<[[string, string, string], [string, string, string], [string, string, string]]>([
+    ['🍒', '🍒', '🍒'],
+    ['🍒', '🍒', '🍒'],
+    ['🍒', '🍒', '🍒'],
+  ]);
   const [last, setLast] = useState<SlotsResponse | null>(null);
   const [history, setHistory] = useState<Array<{ outcome: Outcome; payout: number; bet: number }>>([]);
 
@@ -60,6 +64,14 @@ export default function SlotsPage() {
     setBet(Math.max(1, Math.floor(balance * pct)));
   };
 
+  const randSymbol = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+  const makeReelColumn = (center: string) => {
+    // Cosmetic symbols above/below the payline.
+    const top = randSymbol();
+    const bottom = randSymbol();
+    return [top, center, bottom] as [string, string, string];
+  };
+
   const doSpin = async () => {
     if (!canSpin) return;
 
@@ -69,9 +81,9 @@ export default function SlotsPage() {
     const start = Date.now();
     const interval = setInterval(() => {
       setReels([
-        SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
-        SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
-        SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
+        [randSymbol(), randSymbol(), randSymbol()],
+        [randSymbol(), randSymbol(), randSymbol()],
+        [randSymbol(), randSymbol(), randSymbol()],
       ]);
     }, 80);
 
@@ -92,7 +104,11 @@ export default function SlotsPage() {
       const wait = Math.max(0, minSpinMs - (Date.now() - start));
       setTimeout(() => {
         clearInterval(interval);
-        setReels(data.reels);
+        setReels([
+          makeReelColumn(data.reels[0]),
+          makeReelColumn(data.reels[1]),
+          makeReelColumn(data.reels[2]),
+        ]);
         setBalance(data.newBalance);
         setLast(data);
         setHistory(prev => [{ outcome: data.outcome, payout: data.payout, bet: data.bet }, ...prev].slice(0, 12));
@@ -235,9 +251,14 @@ export default function SlotsPage() {
               <div className="relative">
                 <div className={`absolute -inset-10 rounded-full blur-[80px] ${spinning ? 'bg-amber-500/12' : last && last.payout > 0 ? 'bg-green-500/12' : 'bg-purple-500/10'}`} />
                 <div className="relative slots-frame">
-                  <div className={`slots-reel ${spinning ? 'slots-reel-spin' : ''}`}>{reels[0]}</div>
-                  <div className={`slots-reel ${spinning ? 'slots-reel-spin' : ''}`}>{reels[1]}</div>
-                  <div className={`slots-reel ${spinning ? 'slots-reel-spin' : ''}`}>{reels[2]}</div>
+                  <div className="slots-payline" aria-hidden="true" />
+                  {reels.map((col, idx) => (
+                    <div key={idx} className={`slots-col ${spinning ? 'slots-reel-spin' : ''}`}>
+                      <div className="slots-cell slots-cell-dim">{col[0]}</div>
+                      <div className="slots-cell slots-cell-center">{col[1]}</div>
+                      <div className="slots-cell slots-cell-dim">{col[2]}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
