@@ -78,7 +78,8 @@ interface Transaction {
     | 'jackpot_lose'
     | 'reward_starter_pack'
     | 'reward_daily'
-    | 'reward_topgg_vote';
+    | 'reward_topgg_vote'
+    | 'reward_voice_activity';
   amount: number;
   createdAt: string;
 }
@@ -630,7 +631,7 @@ export default function Dashboard() {
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <span className="mt-0.5 text-base">
-                    {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_starter_pack' ? '🎁' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
+                    {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_starter_pack' || tx.type === 'reward_voice_activity' ? '🎁' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-300">
@@ -648,6 +649,8 @@ export default function Dashboard() {
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> claimte <span className="text-green-400 font-medium">{tx.amount}</span> Daily</>
                         : tx.type === 'reward_topgg_vote'
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Vote Reward</>
+                        : tx.type === 'reward_voice_activity'
+                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Voice Reward</>
                         : tx.type === 'blackjack_win'
                         ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei BJ 🃏</>
                         : tx.type === 'blackjack_lose'
@@ -671,13 +674,13 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                    tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote'
+                    tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_voice_activity'
                       ? 'bg-green-500/10 text-green-400'
                       : tx.type === 'redeem' || tx.type === 'coinflip_lose' || tx.type === 'blackjack_lose' || tx.type === 'crash_lose' || tx.type === 'jackpot_lose'
                       ? 'bg-red-500/10 text-red-400'
                       : 'bg-amber-500/10 text-amber-400'
                   }`}>
-                    {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
+                    {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_voice_activity' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
                   </span>
                 </div>
               ))}

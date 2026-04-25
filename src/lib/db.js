@@ -149,6 +149,24 @@ function getDb() {
       CREATE INDEX IF NOT EXISTS idx_blackjack_players_table ON blackjack_players(tableId);
       CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_state_user_key ON reward_state(userId, rewardKey);
     `);
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS voice_reward_claims (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sessionId TEXT UNIQUE NOT NULL,
+        userId INTEGER NOT NULL,
+        discordId TEXT NOT NULL,
+        guildId TEXT,
+        channelId TEXT,
+        durationMs INTEGER NOT NULL DEFAULT 0,
+        amountRequested INTEGER NOT NULL DEFAULT 0,
+        amountGranted INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_voice_reward_claims_user ON voice_reward_claims(userId);
+      CREATE INDEX IF NOT EXISTS idx_voice_reward_claims_created ON voice_reward_claims(createdAt);
+    `);
   }
   return db;
 }
