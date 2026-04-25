@@ -8,9 +8,10 @@ import { creditTokens, debitTokens, recordTransaction } from '@/lib/tokenLedger'
 const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣'];
 
 // Payouts in percent of bet to avoid floating point issues (e.g. 120 = 1.2x credit).
-// Expected return (credit multiple) is ~0.962 with uniform symbol distribution.
-const PAYOUT_PAIR_PCT = [120, 120, 120, 140, 160, 200, 300];
-const PAYOUT_TRIPLE_PCT = [500, 500, 600, 800, 1200, 2000, 6500];
+// Note: We intentionally keep win frequency lower than "any two match".
+// Pairs pay small, triples pay meaningful, 7️⃣ is the rare/high payout symbol.
+const PAYOUT_PAIR_PCT = [110, 110, 115, 120, 130, 150, 180];
+const PAYOUT_TRIPLE_PCT = [400, 450, 550, 700, 1000, 1600, 4200];
 
 function spinReels() {
   return [
@@ -31,13 +32,9 @@ function evaluateSpin(reelIdx) {
     };
   }
 
-  if (a === b || a === c) {
-    return { outcome: 'pair', symbolIndex: a, payoutPct: PAYOUT_PAIR_PCT[a] };
-  }
-
-  if (b === c) {
-    return { outcome: 'pair', symbolIndex: b, payoutPct: PAYOUT_PAIR_PCT[b] };
-  }
+  // Lower win frequency: only pay for a left-adjacent pair (reel 1 + reel 2).
+  // This avoids the very frequent "any two match" wins.
+  if (a === b) return { outcome: 'pair', symbolIndex: a, payoutPct: PAYOUT_PAIR_PCT[a] };
 
   return { outcome: 'lose', symbolIndex: null, payoutPct: 0 };
 }
@@ -85,4 +82,3 @@ export default async function handler(req, res) {
     return sendApiError(res, error);
   }
 }
-

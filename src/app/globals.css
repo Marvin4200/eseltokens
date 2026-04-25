@@ -103,8 +103,8 @@ body::before {
 .slots-frame {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.85rem;
-  padding: 1.2rem;
+  gap: 1.05rem;
+  padding: 1.35rem;
   border-radius: 1.4rem;
   background:
     linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.18)),
@@ -117,18 +117,18 @@ body::before {
 
 .slots-payline {
   position: absolute;
-  left: 0.9rem;
-  right: 0.9rem;
+  left: 1.05rem;
+  right: 1.05rem;
   top: 50%;
   transform: translateY(-50%);
   height: 0;
-  border-top: 1px solid rgba(245, 158, 11, 0.35);
+  border-top: 2px solid rgba(245, 158, 11, 0.33);
   box-shadow: 0 0 18px rgba(245, 158, 11, 0.25);
   pointer-events: none;
 }
 
 .slots-col {
-  width: clamp(84px, 20vw, 140px);
+  width: clamp(96px, 22vw, 168px);
   display: grid;
   grid-template-rows: repeat(3, 1fr);
   gap: 0.55rem;
@@ -140,13 +140,19 @@ body::before {
   will-change: transform, filter;
 }
 
+.slots-col-tall {
+  grid-template-rows: repeat(5, 1fr);
+  gap: 0.6rem;
+  padding: 0.8rem;
+}
+
 .slots-cell {
-  height: clamp(64px, 14vw, 92px);
+  height: clamp(58px, 11.2vw, 88px);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 1rem;
-  font-size: clamp(2.1rem, 8.2vw, 3.2rem);
+  font-size: clamp(2.2rem, 7.6vw, 3.35rem);
   background: radial-gradient(circle at 50% 25%, rgba(245,158,11,0.10), rgba(139,92,246,0.06) 45%, rgba(0,0,0,0.42) 100%);
   border: 1px solid rgba(255,255,255,0.08);
   text-shadow: 0 10px 30px rgba(0,0,0,0.45);

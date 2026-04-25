@@ -8,6 +8,9 @@ import { apiPath } from '@/lib/clientPaths';
 type Outcome = 'triple' | 'pair' | 'lose';
 
 const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣'];
+const VISIBLE_PER_REEL = 5; // more "fields" visible
+const SPIN_MIN_MS = 1400;
+const SPIN_MAX_MS = 2000;
 
 interface SlotsResponse {
   bet: number;
@@ -28,16 +31,23 @@ export default function SlotsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [spinning, setSpinning] = useState(false);
-  const [reels, setReels] = useState<[[string, string, string], [string, string, string], [string, string, string]]>([
-    ['🍒', '🍒', '🍒'],
-    ['🍒', '🍒', '🍒'],
-    ['🍒', '🍒', '🍒'],
+  const [autoSpin, setAutoSpin] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+
+  // Each reel is a "strip" of visible symbols. The payline is the center index.
+  const [reelStrips, setReelStrips] = useState<[string[], string[], string[]]>([
+    Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
+    Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
+    Array.from({ length: VISIBLE_PER_REEL }, () => '🍒'),
   ]);
   const [last, setLast] = useState<SlotsResponse | null>(null);
   const [history, setHistory] = useState<Array<{ outcome: Outcome; payout: number; bet: number }>>([]);
 
   const userRole = (session?.user as any)?.role;
   const initialLoadRef = useRef(true);
+  const autoSpinRef = useRef(false);
+  const spinTimeoutRef = useRef<number | null>(null);
+  const stopSoundRef = useRef<null | (() => void)>(null);
 
   useEffect(() => {
     if (status !== 'loading') initialLoadRef.current = false;
@@ -65,11 +75,39 @@ export default function SlotsPage() {
   };
 
   const randSymbol = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-  const makeReelColumn = (center: string) => {
-    // Cosmetic symbols above/below the payline.
-    const top = randSymbol();
-    const bottom = randSymbol();
-    return [top, center, bottom] as [string, string, string];
+
+  const makeStrip = (center: string) => {
+    const strip = Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol());
+    strip[Math.floor(VISIBLE_PER_REEL / 2)] = center;
+    return strip;
+  };
+
+  const beep = async (freq: number, ms: number, type: OscillatorType = 'sine', gain = 0.035) => {
+    if (!soundOn) return null;
+    try {
+      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) return null;
+      const ctx = new Ctx();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.value = gain;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      const t = window.setTimeout(() => {
+        try { o.stop(); } catch {}
+        try { ctx.close(); } catch {}
+      }, ms);
+      return () => {
+        window.clearTimeout(t);
+        try { o.stop(); } catch {}
+        try { ctx.close(); } catch {}
+      };
+    } catch {
+      return null;
+    }
   };
 
   const doSpin = async () => {
@@ -78,14 +116,18 @@ export default function SlotsPage() {
     setSpinning(true);
     setLast(null);
 
-    const start = Date.now();
-    const interval = setInterval(() => {
-      setReels([
-        [randSymbol(), randSymbol(), randSymbol()],
-        [randSymbol(), randSymbol(), randSymbol()],
-        [randSymbol(), randSymbol(), randSymbol()],
+    // Start "spinning" animation by mutating strips quickly.
+    const interval = window.setInterval(() => {
+      setReelStrips([
+        Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
+        Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
+        Array.from({ length: VISIBLE_PER_REEL }, () => randSymbol()),
       ]);
-    }, 80);
+    }, 70);
+
+    // Spin sound (continuous-ish), stopped once result is applied.
+    stopSoundRef.current?.();
+    stopSoundRef.current = (await beep(150, SPIN_MAX_MS + 300, 'square', 0.02)) || null;
 
     try {
       const res = await fetch(apiPath('/api/tokens/slots'), {
@@ -95,31 +137,70 @@ export default function SlotsPage() {
       });
       const data = (await res.json()) as SlotsResponse;
       if (!res.ok) {
-        clearInterval(interval);
+        window.clearInterval(interval);
         setSpinning(false);
+        stopSoundRef.current?.();
         return;
       }
 
-      const minSpinMs = 1300;
-      const wait = Math.max(0, minSpinMs - (Date.now() - start));
-      setTimeout(() => {
-        clearInterval(interval);
-        setReels([
-          makeReelColumn(data.reels[0]),
-          makeReelColumn(data.reels[1]),
-          makeReelColumn(data.reels[2]),
-        ]);
+      const wait = Math.floor(Math.random() * (SPIN_MAX_MS - SPIN_MIN_MS + 1)) + SPIN_MIN_MS;
+      window.setTimeout(async () => {
+        window.clearInterval(interval);
+        stopSoundRef.current?.();
+
+        setReelStrips([makeStrip(data.reels[0]), makeStrip(data.reels[1]), makeStrip(data.reels[2])]);
         setBalance(data.newBalance);
         setLast(data);
         setHistory(prev => [{ outcome: data.outcome, payout: data.payout, bet: data.bet }, ...prev].slice(0, 12));
         setSpinning(false);
         update();
+
+        // Result sfx.
+        if (data.payout > 0) {
+          await beep(data.outcome === 'triple' ? 880 : 660, 140, 'triangle', 0.05);
+          await beep(data.outcome === 'triple' ? 990 : 740, 120, 'triangle', 0.05);
+        } else {
+          await beep(220, 120, 'sawtooth', 0.03);
+        }
       }, wait);
     } catch {
-      clearInterval(interval);
+      window.clearInterval(interval);
       setSpinning(false);
+      stopSoundRef.current?.();
     }
   };
+
+  useEffect(() => {
+    autoSpinRef.current = autoSpin;
+    if (!autoSpin) {
+      if (spinTimeoutRef.current) window.clearTimeout(spinTimeoutRef.current);
+      spinTimeoutRef.current = null;
+      return;
+    }
+
+    // kick
+    if (!spinning && bet >= 1 && bet <= balance) {
+      spinTimeoutRef.current = window.setTimeout(() => doSpin(), 250);
+    }
+  }, [autoSpin]);
+
+  useEffect(() => {
+    // Chain autospins when a spin finishes.
+    if (!autoSpinRef.current) return;
+    if (spinning) return;
+    if (!(bet >= 1 && bet <= balance)) {
+      setAutoSpin(false);
+      return;
+    }
+    spinTimeoutRef.current = window.setTimeout(() => doSpin(), 650);
+  }, [spinning, balance, bet]);
+
+  useEffect(() => {
+    return () => {
+      if (spinTimeoutRef.current) window.clearTimeout(spinTimeoutRef.current);
+      stopSoundRef.current?.();
+    };
+  }, []);
 
   if (status === 'loading' && initialLoadRef.current) {
     return (
@@ -252,13 +333,21 @@ export default function SlotsPage() {
                 <div className={`absolute -inset-10 rounded-full blur-[80px] ${spinning ? 'bg-amber-500/12' : last && last.payout > 0 ? 'bg-green-500/12' : 'bg-purple-500/10'}`} />
                 <div className="relative slots-frame">
                   <div className="slots-payline" aria-hidden="true" />
-                  {reels.map((col, idx) => (
-                    <div key={idx} className={`slots-col ${spinning ? 'slots-reel-spin' : ''}`}>
-                      <div className="slots-cell slots-cell-dim">{col[0]}</div>
-                      <div className="slots-cell slots-cell-center">{col[1]}</div>
-                      <div className="slots-cell slots-cell-dim">{col[2]}</div>
-                    </div>
-                  ))}
+                  {reelStrips.map((strip, idx) => {
+                    const centerIdx = Math.floor(VISIBLE_PER_REEL / 2);
+                    return (
+                      <div key={idx} className={`slots-col slots-col-tall ${spinning ? 'slots-reel-spin' : ''}`}>
+                        {strip.map((sym, i) => (
+                          <div
+                            key={i}
+                            className={`slots-cell ${i === centerIdx ? 'slots-cell-center' : 'slots-cell-dim'}`}
+                          >
+                            {sym}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -266,7 +355,7 @@ export default function SlotsPage() {
                 {resultText ? (
                   <p className={`text-2xl sm:text-3xl font-black animate-result-pop ${resultClass}`}>{resultText}</p>
                 ) : (
-                  <p className="text-sm text-gray-500">Pair zahlt klein, Triple zahlt fett.</p>
+                  <p className="text-sm text-gray-500">Pair (links) zahlt klein, Triple zahlt fett.</p>
                 )}
                 {last && last.payout > 0 && (
                   <p className="text-xs text-gray-500 mt-1">
@@ -293,6 +382,24 @@ export default function SlotsPage() {
                 onChange={e => setBet(Math.max(1, Math.min(balance || 999999, parseInt(e.target.value) || 1)))}
                 className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-lg outline-none focus:border-purple-500/40"
               />
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setAutoSpin(v => !v)}
+                  disabled={balance < 1 || bet < 1}
+                  className={`btn-chip ${autoSpin ? 'border-amber-400/40 text-amber-200 bg-amber-500/10' : ''}`}
+                >
+                  {autoSpin ? 'AutoSpin: ON' : 'AutoSpin'}
+                </button>
+                <button
+                  onClick={() => setSoundOn(v => !v)}
+                  className={`btn-chip ${soundOn ? '' : 'border-red-500/30 text-red-300 bg-red-500/10'}`}
+                  title="Sound an/aus"
+                >
+                  {soundOn ? 'Sound: ON' : 'Sound: OFF'}
+                </button>
+              </div>
+
               <button
                 onClick={doSpin}
                 disabled={!canSpin}
@@ -307,22 +414,22 @@ export default function SlotsPage() {
               <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Paytable</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>🍒🍒</span><span className="text-amber-300 font-bold">1.2x</span>
+                  <span>🍒🍒</span><span className="text-amber-300 font-bold">1.1x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>🍒🍒🍒</span><span className="text-amber-300 font-bold">5x</span>
+                  <span>🍒🍒🍒</span><span className="text-amber-300 font-bold">4x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>💎💎</span><span className="text-amber-300 font-bold">2x</span>
+                  <span>💎💎</span><span className="text-amber-300 font-bold">1.5x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>💎💎💎</span><span className="text-amber-300 font-bold">20x</span>
+                  <span>💎💎💎</span><span className="text-amber-300 font-bold">16x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>7️⃣7️⃣</span><span className="text-amber-300 font-bold">3x</span>
+                  <span>7️⃣7️⃣</span><span className="text-amber-300 font-bold">1.8x</span>
                 </div>
                 <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span>7️⃣7️⃣7️⃣</span><span className="text-amber-300 font-bold">65x</span>
+                  <span>7️⃣7️⃣7️⃣</span><span className="text-amber-300 font-bold">42x</span>
                 </div>
               </div>
               <p className="text-[11px] text-gray-600 mt-3">Payouts sind als Credit-Multiplikator auf deinen Einsatz gerechnet.</p>
