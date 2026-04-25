@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { apiPath } from '@/lib/clientPaths';
+import NotificationsBell from '@/components/NotificationsBell';
 
 const MULTIPLIER_SPEED = 0.00006;
 
@@ -330,6 +331,7 @@ export default function Crash() {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <NotificationsBell />
             <button
               onClick={() => setMenuOpen(m => !m)}
               className="w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
@@ -358,6 +360,7 @@ export default function Crash() {
               <div className="grid grid-cols-6 gap-2">
                 {[
                   { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: false },
+                  { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
                   { href: '/crash', icon: '📈', label: 'Crash', current: true },
                   { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                   { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },

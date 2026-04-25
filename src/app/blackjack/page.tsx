@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { apiPath } from '@/lib/clientPaths';
+import NotificationsBell from '@/components/NotificationsBell';
 
 interface CardData {
   suit: string;
@@ -362,6 +363,7 @@ export default function BlackjackPage() {
               <h1 className="text-xl font-bold text-white">Blackjack</h1>
             </div>
           <div className="flex items-center gap-2 sm:gap-3">
+              <NotificationsBell />
               <span className="inline-block px-2 sm:px-3 py-1 rounded-full bg-green-900/30 border border-green-500/20 text-green-300 text-xs font-medium truncate max-w-[130px] sm:max-w-none">
                 {statusLabels[table.status] || table.status}
               </span>
@@ -393,6 +395,7 @@ export default function BlackjackPage() {
                 <div className="grid grid-cols-6 gap-2">
                   {[
                     { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: false },
+                    { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
                     { href: '/crash', icon: '📈', label: 'Crash', current: false },
                     { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                     { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
@@ -695,6 +698,7 @@ export default function BlackjackPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <NotificationsBell />
             <button
               onClick={() => setMenuOpen(m => !m)}
               className="w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
@@ -719,6 +723,7 @@ export default function BlackjackPage() {
               <div className="grid grid-cols-6 gap-2">
                 {[
                   { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: false },
+                  { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
                   { href: '/crash', icon: '📈', label: 'Crash', current: false },
                   { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                   { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },

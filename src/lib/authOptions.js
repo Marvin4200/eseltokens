@@ -1,6 +1,5 @@
 import DiscordProvider from 'next-auth/providers/discord';
 import getDb from '@/lib/db';
-import { creditTokens, recordTransaction } from '@/lib/tokenLedger';
 
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -49,6 +48,7 @@ const authOptions = {
 
       const existing = db.prepare('SELECT * FROM users WHERE discordId = ?').get(discordId);
       const starterAmount = Math.max(0, parseInt(process.env.STARTER_PACK_TOKENS || '500', 10) || 0);
+      const isNewUser = !existing;
 
       if (existing) {
         const nextRole = desiredRole === 'admin' && existing.role !== 'admin' ? 'admin' : existing.role;
@@ -59,24 +59,19 @@ const authOptions = {
           .run(discordId, profile.username, profile.discriminator || '', profile.avatar || '', desiredRole);
       }
 
-      // Starter pack: grant once per user on first successful sign-in.
-      // Uses reward_state to avoid schema changes to users.
-      if (starterAmount > 0) {
+      // Starter pack: show as a claimable notification for first-time users.
+      // Create an unclaimed reward_state row (no auto-credit).
+      if (starterAmount > 0 && isNewUser) {
         const user = db.prepare('SELECT id FROM users WHERE discordId = ?').get(discordId);
         if (user?.id) {
-          const apply = db.transaction(() => {
-            const already = db
-              .prepare('SELECT 1 FROM reward_state WHERE userId = ? AND rewardKey = ?')
-              .get(user.id, 'starter_pack');
+          const create = db.transaction(() => {
+            const already = db.prepare('SELECT 1 FROM reward_state WHERE userId = ? AND rewardKey = ?').get(user.id, 'starter_pack');
             if (already) return;
-
-            creditTokens(db, user.id, starterAmount);
-            recordTransaction(db, { fromUserId: user.id, type: 'reward_starter_pack', amount: starterAmount });
             db.prepare(
-              "INSERT INTO reward_state (userId, rewardKey, lastClaimAt, claimCount, meta, updatedAt) VALUES (?, ?, ?, 1, ?, datetime('now'))"
-            ).run(user.id, 'starter_pack', Date.now(), JSON.stringify({ amount: starterAmount }));
+              "INSERT INTO reward_state (userId, rewardKey, lastClaimAt, claimCount, meta, updatedAt) VALUES (?, ?, ?, 0, ?, datetime('now'))"
+            ).run(user.id, 'starter_pack', Date.now(), JSON.stringify({ amount: starterAmount, claimed: false }));
           });
-          apply();
+          create();
         }
       }
 

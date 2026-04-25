@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { apiPath } from '@/lib/clientPaths';
+import NotificationsBell from '@/components/NotificationsBell';
 
 type FlipResult = 'win' | 'lose' | null;
 
@@ -118,6 +119,7 @@ export default function CoinflipPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <NotificationsBell />
             <button
               onClick={() => setMenuOpen(m => !m)}
               className="w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
@@ -146,6 +148,7 @@ export default function CoinflipPage() {
               <div className="grid grid-cols-6 gap-2">
                 {[
                   { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: false },
+                  { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
                   { href: '/crash', icon: '📈', label: 'Crash', current: false },
                   { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: true },
                   { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },

@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { apiPath } from '@/lib/clientPaths';
+import NotificationsBell from '@/components/NotificationsBell';
 
 // Leveling functions (mirrored from server lib for client use)
 function xpForLevel(level: number): number {
@@ -96,9 +97,6 @@ export default function Dashboard() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'level' | 'tokens'>('level');
-  const [rewardMsg, setRewardMsg] = useState<string | null>(null);
-  const [claimingDaily, setClaimingDaily] = useState(false);
-  const [claimingVote, setClaimingVote] = useState(false);
   const userRole = (session?.user as any)?.role;
 
   useEffect(() => {
@@ -141,56 +139,6 @@ export default function Dashboard() {
     const res = await fetch(apiPath('/api/transactions'));
     const data = await res.json();
     setTransactions(Array.isArray(data) ? data : []);
-  };
-
-  const voteUrl = (process.env.NEXT_PUBLIC_TOPGG_VOTE_URL || '').trim();
-
-  const claimDaily = async () => {
-    if (claimingDaily) return;
-    setClaimingDaily(true);
-    setRewardMsg(null);
-    try {
-      const res = await fetch(apiPath('/api/tokens/daily'), { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (data?.nextClaimAt) {
-          setRewardMsg('Daily ist noch im Cooldown.');
-        } else {
-          setRewardMsg(data?.error || 'Daily claim fehlgeschlagen.');
-        }
-        return;
-      }
-      setRewardMsg(`Daily: +${data.amount} Tokens`);
-      await update();
-      fetchTransactions();
-    } finally {
-      setClaimingDaily(false);
-    }
-  };
-
-  const claimVote = async () => {
-    if (claimingVote) return;
-    setClaimingVote(true);
-    setRewardMsg(null);
-    try {
-      const res = await fetch(apiPath('/api/tokens/vote'), { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (data?.voteUrl) {
-          setRewardMsg('Kein Vote gefunden. Vote zuerst auf top.gg und versuch es dann nochmal.');
-        } else if (data?.nextClaimAt) {
-          setRewardMsg('Vote-Reward ist noch im Cooldown.');
-        } else {
-          setRewardMsg(data?.error || 'Vote claim fehlgeschlagen.');
-        }
-        return;
-      }
-      setRewardMsg(`Vote: +${data.amount} Tokens`);
-      await update();
-      fetchTransactions();
-    } finally {
-      setClaimingVote(false);
-    }
   };
 
   const giveToken = async () => {
@@ -261,6 +209,7 @@ export default function Dashboard() {
 
           {/* Right: user dropdown (desktop) + hamburger */}
           <div className="flex items-center gap-3">
+            <NotificationsBell />
             {/* Desktop user dropdown */}
             <div className="hidden md:block relative group">
               <div className="flex items-center gap-2 cursor-pointer text-sm px-3 py-2 rounded-lg hover:bg-white/5 transition-all">
@@ -270,7 +219,7 @@ export default function Dashboard() {
                 </svg>
               </div>
               <div className="absolute right-0 top-full h-2 w-44 hidden group-hover:block" />
-              <div className="absolute right-0 top-full mt-2 w-44 py-1.5 rounded-xl bg-[#1a1a2e] backdrop-blur-xl border border-purple-500/15 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="absolute right-0 top-full mt-2 w-44 py-1.5 rounded-xl bg-[#1a1a2e] backdrop-blur-xl border border-purple-500/15 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 {userRole === 'admin' && (
                   <button onClick={() => router.push('/admin')} className="w-full text-left text-sm px-4 py-2 text-purple-300 hover:bg-purple-500/15 transition-colors flex items-center gap-2">
                     ⚙️ Admin Panel
@@ -313,6 +262,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-6 gap-2 mb-4">
                   {[
                     { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: true },
+                    { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
                     { href: '/crash', icon: '📈', label: 'Crash', current: false },
                     { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                     { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
@@ -419,58 +369,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── TOKEN ACTIONS: Gift + Redeem ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-
-          {/* Rewards card */}
-          <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden">
-            <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-amber-500/5 rounded-full blur-[40px]" />
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-base">🎁</div>
-                <h2 className="text-lg font-bold text-white">Rewards</h2>
-              </div>
-
-              <div className="space-y-2 text-sm text-gray-400">
-                <p><span className="text-gray-300 font-medium">Starter Pack</span> ist einmalig beim ersten Login.</p>
-                <p><span className="text-gray-300 font-medium">Daily</span> ist alle 24h.</p>
-                <p><span className="text-gray-300 font-medium">Vote</span> ist alle 12h (top.gg).</p>
-              </div>
-
-              {rewardMsg && (
-                <div className="mt-4 text-xs text-gray-300 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
-                  {rewardMsg}
-                </div>
-              )}
-
-              <button
-                onClick={claimDaily}
-                disabled={claimingDaily}
-                className="mt-4 w-full btn-gold inline-flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {claimingDaily ? '...' : 'Claim Daily'}
-              </button>
-
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <a
-                  href={voteUrl || '#'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`btn-chip text-center ${voteUrl ? '' : 'opacity-40 pointer-events-none'}`}
-                  title={voteUrl ? 'Open top.gg Vote' : 'Set NEXT_PUBLIC_TOPGG_VOTE_URL'}
-                >
-                  Vote
-                </a>
-                <button
-                  onClick={claimVote}
-                  disabled={claimingVote}
-                  className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {claimingVote ? '...' : 'Claim'}
-                </button>
-              </div>
-              {!voteUrl && <p className="text-[11px] text-gray-600 mt-2">Vote-Link fehlt (Env).</p>}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
 
           {/* Gift card */}
           <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden">
