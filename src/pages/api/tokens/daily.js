@@ -35,15 +35,16 @@ export default async function handler(req, res) {
       creditTokens(db, userId, amount);
       recordTransaction(db, { fromUserId: userId, type: 'reward_daily', amount });
 
-      if (state) {
-        db.prepare(
-          "UPDATE reward_state SET lastClaimAt = ?, claimCount = claimCount + 1, updatedAt = datetime('now'), meta = ? WHERE userId = ? AND rewardKey = ?"
-        ).run(now, JSON.stringify({ amount }), userId, 'daily_reward');
-      } else {
-        db.prepare(
-          "INSERT INTO reward_state (userId, rewardKey, lastClaimAt, claimCount, meta, updatedAt) VALUES (?, ?, ?, 1, ?, datetime('now'))"
-        ).run(userId, 'daily_reward', now, JSON.stringify({ amount }));
-      }
+      // Idempotent under retries/double-clicks.
+      db.prepare(
+        `INSERT INTO reward_state (userId, rewardKey, lastClaimAt, claimCount, meta, updatedAt)
+         VALUES (?, ?, ?, 1, ?, datetime('now'))
+         ON CONFLICT(userId, rewardKey) DO UPDATE SET
+           lastClaimAt = excluded.lastClaimAt,
+           claimCount = reward_state.claimCount + 1,
+           meta = excluded.meta,
+           updatedAt = datetime('now')`
+      ).run(userId, 'daily_reward', now, JSON.stringify({ amount }));
     });
     claim();
 
@@ -59,4 +60,3 @@ export default async function handler(req, res) {
     return sendApiError(res, error);
   }
 }
-

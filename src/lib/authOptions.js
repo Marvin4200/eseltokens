@@ -65,10 +65,9 @@ const authOptions = {
         const user = db.prepare('SELECT id FROM users WHERE discordId = ?').get(discordId);
         if (user?.id) {
           const create = db.transaction(() => {
-            const already = db.prepare('SELECT 1 FROM reward_state WHERE userId = ? AND rewardKey = ?').get(user.id, 'starter_pack');
-            if (already) return;
+            // Idempotent: NextAuth can call signIn twice; avoid UNIQUE constraint errors.
             db.prepare(
-              "INSERT INTO reward_state (userId, rewardKey, lastClaimAt, claimCount, meta, updatedAt) VALUES (?, ?, ?, 0, ?, datetime('now'))"
+              "INSERT OR IGNORE INTO reward_state (userId, rewardKey, lastClaimAt, claimCount, meta, updatedAt) VALUES (?, ?, ?, 0, ?, datetime('now'))"
             ).run(user.id, 'starter_pack', Date.now(), JSON.stringify({ amount: starterAmount, claimed: false }));
           });
           create();
