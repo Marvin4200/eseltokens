@@ -59,6 +59,15 @@ function getDb() {
         UNIQUE(tableId, seatIndex),
         UNIQUE(tableId, userId)
       );
+
+      CREATE TABLE IF NOT EXISTS giveaways (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prize TEXT NOT NULL,
+        duration INTEGER NOT NULL,
+        winners INTEGER NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        ended_at TEXT
+      );
     `);
 
     // Add xp column if it doesn't exist

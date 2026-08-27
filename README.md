@@ -29,7 +29,7 @@ Eine moderne Website für die Eselbande Community mit einem einfachen Token-Syst
    INITIAL_ADMIN_DISCORD_ID=your_discord_id_for_initial_admin
    ```
 
-   > Die Datenbank ist SQLite (`eseltokens.db`) und wird automatisch beim ersten Start erstellt.
+   > Die Datenbank wird basierend auf der Konfiguration (MongoDB oder SQLite) initialisiert.
 
 3. Starte den Development Server:
    ```bash
@@ -52,6 +52,6 @@ Verwende Vercel oder einen anderen Hosting-Service. Stelle sicher, dass die Envi
 
 - Next.js 14
 - NextAuth.js
-- MongoDB mit Mongoose
+- Datenbank (SQLite oder MongoDB)
 - TailwindCSS
 - TypeScript
