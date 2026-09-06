@@ -68,12 +68,33 @@ function getDb() {
         created_at TEXT DEFAULT (datetime('now')),
         ended_at TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS giveaway_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        giveawayId INTEGER NOT NULL,
+        userId INTEGER NOT NULL,
+        createdAt TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (giveawayId) REFERENCES giveaways(id) ON DELETE CASCADE,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(giveawayId, userId)
+      );
+      CREATE INDEX IF NOT EXISTS idx_giveaway_entries_giveaway ON giveaway_entries(giveawayId);
     `);
 
     // Add xp column if it doesn't exist
     const userCols = db.prepare("PRAGMA table_info(users)").all();
     if (!userCols.find(c => c.name === 'xp')) {
       db.exec('ALTER TABLE users ADD COLUMN xp INTEGER DEFAULT 0');
+    }
+
+    // giveaways predates ends_at/winner_ids -- added so expiry can be checked cheaply (epoch ms)
+    // and so finalized winners are recorded without overloading the "winners" (requested count) column.
+    const giveawayCols = db.prepare("PRAGMA table_info(giveaways)").all();
+    if (!giveawayCols.find(c => c.name === 'ends_at')) {
+      db.exec('ALTER TABLE giveaways ADD COLUMN ends_at INTEGER');
+    }
+    if (!giveawayCols.find(c => c.name === 'winner_ids')) {
+      db.exec('ALTER TABLE giveaways ADD COLUMN winner_ids TEXT');
     }
 
     // Crash game tables
@@ -176,6 +197,49 @@ function getDb() {
       CREATE INDEX IF NOT EXISTS idx_voice_reward_claims_user ON voice_reward_claims(userId);
       CREATE INDEX IF NOT EXISTS idx_voice_reward_claims_created ON voice_reward_claims(createdAt);
     `);
+
+    // Ad-slot system: centrally-managed placements across the landing page and
+    // this app. "mode" defaults to 'house' (self-promo for our own shop products)
+    // and is a ready-made hook for a real ad network later — see src/lib/ads.js.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS ad_slots (
+        key TEXT PRIMARY KEY,
+        enabled INTEGER DEFAULT 1,
+        mode TEXT DEFAULT 'house' CHECK(mode IN ('house', 'adsense', 'custom', 'off')),
+        title TEXT,
+        description TEXT,
+        imageEmoji TEXT,
+        linkUrl TEXT,
+        ctaText TEXT,
+        badgeText TEXT DEFAULT 'Anzeige',
+        networkClient TEXT,
+        networkSlotId TEXT,
+        updatedAt TEXT DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS ad_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slotKey TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('impression', 'click')),
+        page TEXT,
+        createdAt TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (slotKey) REFERENCES ad_slots(key) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_ad_events_slot_type ON ad_events(slotKey, type);
+      CREATE INDEX IF NOT EXISTS idx_ad_events_created ON ad_events(createdAt);
+    `);
+
+    // Seed default house ads so slots look intentional from day one instead of
+    // empty boxes. INSERT OR IGNORE — only applies on first creation, never
+    // overwrites content an admin has since edited via /admin/ads.
+    db.prepare(
+      `INSERT OR IGNORE INTO ad_slots (key, enabled, mode, title, description, imageEmoji, linkUrl, ctaText, badgeText)
+       VALUES ('landing-midcontent', 1, 'house', 'Fahrstuhl Premium', 'Mehr Automatisierung, mehr Anpassung, mehr Komfort für deinen Discord-Server.', '🚀', 'https://shop.eselbande.com', 'Jetzt entdecken →', 'Anzeige')`
+    ).run();
+    db.prepare(
+      `INSERT OR IGNORE INTO ad_slots (key, enabled, mode, title, description, imageEmoji, linkUrl, ctaText, badgeText)
+       VALUES ('eseltokens-dashboard', 1, 'house', 'Eselbuilder Pro', 'KI-Server-Aufbau ohne Limits, mehr EselFreund-Minuten und Prio-Support.', '🤖', 'https://shop.eselbande.com', 'Pro holen →', 'Anzeige')`
+    ).run();
   }
   return db;
 }
