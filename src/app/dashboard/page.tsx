@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 import NotificationsBell from '@/components/NotificationsBell';
-import AdSlot from '@/components/AdSlot';
 
 // Leveling functions (mirrored from server lib for client use)
 function xpForLevel(level: number): number {
@@ -232,7 +231,10 @@ export default function Dashboard() {
                     🛡️ Moderator
                   </button>
                 )}
-                {(userRole === 'admin' || userRole === 'moderator') && <div className="my-1 h-px bg-white/5" />}
+                <button onClick={() => router.push('/history')} className="w-full text-left text-sm px-4 py-2 text-amber-300 hover:bg-amber-500/15 transition-colors flex items-center gap-2">
+                  🧾 Kontoauszug
+                </button>
+                <div className="my-1 h-px bg-white/5" />
                 <button onClick={() => signOut()} className="w-full text-left text-sm px-4 py-2 text-red-400 hover:bg-red-500/15 transition-colors flex items-center gap-2">
                   🚪 Logout
                 </button>
@@ -261,7 +263,7 @@ export default function Dashboard() {
             <div className="border-t border-white/5 bg-black/60 backdrop-blur-xl">
               <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
                 <p className="text-xs text-gray-600 uppercase tracking-widest mb-3">Spiele</p>
-                <div className="grid grid-cols-7 gap-2 mb-4">
+                <div className="grid grid-cols-6 gap-2 mb-4">
                   {[
                     { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: true },
                     { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
@@ -269,7 +271,6 @@ export default function Dashboard() {
                     { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                     { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
                     { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: false },
-                    { href: '/giveaways', icon: '🎁', label: 'Giveaways', current: false },
                   ].map(item => (
                     <button
                       key={item.href}
@@ -298,6 +299,9 @@ export default function Dashboard() {
                       🛡️ Moderator
                     </button>
                   )}
+                  <button onClick={() => { router.push('/history'); setMenuOpen(false); }} className="w-full text-left text-sm px-3 py-2.5 rounded-lg text-amber-300 hover:bg-amber-500/15 transition-colors flex items-center gap-2">
+                    🧾 Kontoauszug
+                  </button>
                   <button onClick={() => signOut()} className="w-full text-left text-sm px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/15 transition-colors flex items-center gap-2">
                     🚪 Logout
                   </button>
@@ -692,8 +696,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        <AdSlot slotKey="eseltokens-dashboard" className="animate-fade-in-up" />
       </div>
     </div>
   );
