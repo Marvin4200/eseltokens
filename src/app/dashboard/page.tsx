@@ -235,6 +235,9 @@ export default function Dashboard() {
                 <button onClick={() => router.push('/history')} className="w-full text-left text-sm px-4 py-2 text-amber-300 hover:bg-amber-500/15 transition-colors flex items-center gap-2">
                   🧾 Kontoauszug
                 </button>
+                <button onClick={() => router.push('/achievements')} className="w-full text-left text-sm px-4 py-2 text-amber-300 hover:bg-amber-500/15 transition-colors flex items-center gap-2">
+                  🏅 Achievements
+                </button>
                 <div className="my-1 h-px bg-white/5" />
                 <button onClick={() => signOut()} className="w-full text-left text-sm px-4 py-2 text-red-400 hover:bg-red-500/15 transition-colors flex items-center gap-2">
                   🚪 Logout
@@ -281,6 +284,9 @@ export default function Dashboard() {
                   )}
                   <button onClick={() => { router.push('/history'); setMenuOpen(false); }} className="w-full text-left text-sm px-3 py-2.5 rounded-lg text-amber-300 hover:bg-amber-500/15 transition-colors flex items-center gap-2">
                     🧾 Kontoauszug
+                  </button>
+                  <button onClick={() => { router.push('/achievements'); setMenuOpen(false); }} className="w-full text-left text-sm px-3 py-2.5 rounded-lg text-amber-300 hover:bg-amber-500/15 transition-colors flex items-center gap-2">
+                    🏅 Achievements
                   </button>
                   <button onClick={() => signOut()} className="w-full text-left text-sm px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/15 transition-colors flex items-center gap-2">
                     🚪 Logout
