@@ -379,7 +379,7 @@ export default function JackpotPage() {
           <div className="bg-black/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
             <div className="w-full max-w-7xl mx-auto">
               <p className="text-xs text-gray-600 uppercase tracking-widest mb-2">Navigation</p>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-7 gap-2">
                 {[
                   { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: false },
                   { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
@@ -387,6 +387,7 @@ export default function JackpotPage() {
                   { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
                   { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: true },
                   { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: false },
+                  { href: '/giveaways', icon: '🎁', label: 'Giveaways', current: false },
                 ].map(item => (
                   <button
                     key={item.href}
