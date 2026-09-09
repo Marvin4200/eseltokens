@@ -135,10 +135,10 @@ export default function Admin() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push('/admin/ads')}
-              className="text-sm px-4 py-2 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-200 hover:bg-purple-500/25 transition-all"
+              onClick={() => router.push('/admin/fraud')}
+              className="text-sm px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 transition-all"
             >
-              📢 Anzeigen
+              🚨 Fraud-Signale
             </button>
             <button
               onClick={() => router.push('/dashboard')}
