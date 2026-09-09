@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 import NotificationsBell from '@/components/NotificationsBell';
+import GameNav from '@/components/GameNav';
 
 // Leveling functions (mirrored from server lib for client use)
 function xpForLevel(level: number): number {
@@ -262,29 +263,8 @@ export default function Dashboard() {
           <div className={`overflow-hidden transition-opacity duration-300 ${menuOpen ? 'opacity-100' : 'opacity-0'}`}>
             <div className="border-t border-white/5 bg-black/60 backdrop-blur-xl">
               <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
-                <p className="text-xs text-gray-600 uppercase tracking-widest mb-3">Spiele</p>
-                <div className="grid grid-cols-6 gap-2 mb-4">
-                  {[
-                    { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: true },
-                    { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
-                    { href: '/crash', icon: '📈', label: 'Crash', current: false },
-                    { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
-                    { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
-                    { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: false },
-                  ].map(item => (
-                    <button
-                      key={item.href}
-                      onClick={() => { setMenuOpen(false); if (!item.current) router.push(item.href); }}
-                      className={`flex flex-col items-center gap-1 p-2 sm:p-3 rounded-lg transition-all text-xs ${
-                        item.current
-                          ? 'bg-purple-500/20 border border-purple-500/30 text-purple-300 cursor-default'
-                          : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <span className="text-lg sm:text-xl">{item.icon}</span>
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  ))}
+                <div className="mb-4">
+                  <GameNav current="/dashboard" onNavigate={() => setMenuOpen(false)} />
                 </div>
                 {/* Mobile-only account section */}
                 <div className="md:hidden border-t border-white/5 pt-3 space-y-1">

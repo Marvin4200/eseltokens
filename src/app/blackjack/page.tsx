@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 import NotificationsBell from '@/components/NotificationsBell';
+import GameNav from '@/components/GameNav';
 
 interface CardData {
   suit: string;
@@ -389,35 +390,7 @@ export default function BlackjackPage() {
         )}
         <div className={`flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
           <div className="overflow-hidden">
-            <div className="bg-black/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
-              <div className="w-full max-w-7xl mx-auto">
-                <p className="text-xs text-gray-600 uppercase tracking-widest mb-2">Navigation</p>
-                <div className="grid grid-cols-7 gap-2">
-                  {[
-                    { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: false },
-                    { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
-                    { href: '/crash', icon: '📈', label: 'Crash', current: false },
-                    { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
-                    { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
-                    { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: true },
-                    { href: '/giveaways', icon: '🎁', label: 'Giveaways', current: false },
-                  ].map(item => (
-                    <button
-                      key={item.href}
-                      onClick={() => { setMenuOpen(false); if (!item.current) router.push(item.href); }}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all text-xs ${
-                        item.current
-                          ? 'bg-green-500/20 border border-green-500/30 text-green-300 cursor-default'
-                          : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <span className="text-base">{item.icon}</span>
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <GameNav current="/blackjack" onNavigate={() => setMenuOpen(false)} />
           </div>
         </div>
 
@@ -718,35 +691,7 @@ export default function BlackjackPage() {
       )}
       <div className={`flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="overflow-hidden">
-          <div className="bg-black/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
-            <div className="max-w-6xl mx-auto">
-              <p className="text-xs text-gray-600 uppercase tracking-widest mb-2">Navigation</p>
-              <div className="grid grid-cols-7 gap-2">
-                {[
-                  { href: '/dashboard', icon: '🏠', label: 'Dashboard', current: false },
-                  { href: '/earn', icon: '➕', label: '+ Tokens', current: false },
-                  { href: '/crash', icon: '📈', label: 'Crash', current: false },
-                  { href: '/coinflip', icon: '🪙', label: 'Coinflip', current: false },
-                  { href: '/jackpot', icon: '🎰', label: 'Jackpot', current: false },
-                  { href: '/blackjack', icon: '🃏', label: 'Blackjack', current: true },
-                  { href: '/giveaways', icon: '🎁', label: 'Giveaways', current: false },
-                ].map(item => (
-                  <button
-                    key={item.href}
-                    onClick={() => { setMenuOpen(false); if (!item.current) router.push(item.href); }}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all text-xs ${
-                      item.current
-                        ? 'bg-green-500/20 border border-green-500/30 text-green-300 cursor-default'
-                        : 'bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    <span className="text-base">{item.icon}</span>
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <GameNav current="/blackjack" onNavigate={() => setMenuOpen(false)} />
         </div>
       </div>
 
