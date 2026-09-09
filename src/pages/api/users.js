@@ -8,6 +8,14 @@ export default async function handler(req, res) {
 
   const db = getDb();
 
-  const users = db.prepare('SELECT id, username, avatar, balance, xp, role FROM users WHERE role != ?').all('pending');
+  const users = db.prepare(`
+    SELECT u.id, u.username, u.avatar, u.balance, u.xp, u.role,
+      COALESCE(g.total, 0) as givenTotal
+    FROM users u
+    LEFT JOIN (
+      SELECT fromUserId, SUM(amount) as total FROM transactions WHERE type = 'give' GROUP BY fromUserId
+    ) g ON g.fromUserId = u.id
+    WHERE u.role != ?
+  `).all('pending');
   res.status(200).json(users);
 }

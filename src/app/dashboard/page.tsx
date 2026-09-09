@@ -60,6 +60,7 @@ interface User {
   username: string;
   balance: number;
   xp: number;
+  givenTotal?: number;
 }
 
 interface Transaction {
@@ -98,7 +99,7 @@ export default function Dashboard() {
   const [levelUpMsg, setLevelUpMsg] = useState<string | null>(null);
   const [initialLoad, setInitialLoad] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [leaderboardTab, setLeaderboardTab] = useState<'level' | 'tokens'>('level');
+  const [leaderboardTab, setLeaderboardTab] = useState<'level' | 'tokens' | 'given'>('level');
   const userRole = (session?.user as any)?.role;
 
   useEffect(() => {
@@ -188,7 +189,9 @@ export default function Dashboard() {
 
   const sortedByTokens = [...users].sort((a, b) => b.balance - a.balance);
   const sortedByLevel = [...users].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0));
-  const leaderboardUsers = leaderboardTab === 'level' ? sortedByLevel : sortedByTokens;
+  const sortedByGiven = [...users].sort((a, b) => (b.givenTotal ?? 0) - (a.givenTotal ?? 0));
+  const leaderboardUsers =
+    leaderboardTab === 'level' ? sortedByLevel : leaderboardTab === 'tokens' ? sortedByTokens : sortedByGiven;
   const givePresets = [1, 5, 10, 25];
 
   return (
@@ -557,6 +560,16 @@ export default function Dashboard() {
                 >
                   🪙 Tokens
                 </button>
+                <button
+                  onClick={() => setLeaderboardTab('given')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                    leaderboardTab === 'given'
+                      ? 'bg-pink-500/25 text-pink-300 border border-pink-500/30'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  🎁 Verschenkt
+                </button>
               </div>
             </div>
 
@@ -594,9 +607,14 @@ export default function Dashboard() {
                         <p className={`font-bold text-sm ${index === 0 ? 'text-amber-400' : 'text-gray-400'}`}>Lvl {userLevelInfo.level}</p>
                         <p className="text-xs text-gray-600">{(user.xp ?? 0).toLocaleString('de-DE')} XP</p>
                       </div>
-                    ) : (
+                    ) : leaderboardTab === 'tokens' ? (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <span className={`font-bold ${index === 0 ? 'text-amber-400' : 'text-gray-400'}`}>{user.balance}</span>
+                        <span className="text-xs text-gray-600">TKN</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className={`font-bold ${index === 0 ? 'text-pink-400' : 'text-gray-400'}`}>{(user.givenTotal ?? 0).toLocaleString('de-DE')}</span>
                         <span className="text-xs text-gray-600">TKN</span>
                       </div>
                     )}
