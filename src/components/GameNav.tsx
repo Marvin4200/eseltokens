@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/crash', icon: '📈', label: 'Crash' },
   { href: '/coinflip', icon: '🪙', label: 'Coinflip' },
   { href: '/mines', icon: '💣', label: 'Mines' },
+  { href: '/dice', icon: '🎲', label: 'Dice' },
   { href: '/jackpot', icon: '🎰', label: 'Jackpot' },
   { href: '/blackjack', icon: '🃏', label: 'Blackjack' },
   { href: '/giveaways', icon: '🎁', label: 'Giveaways' },
