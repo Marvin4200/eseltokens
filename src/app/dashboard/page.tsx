@@ -6,6 +6,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 import NotificationsBell from '@/components/NotificationsBell';
 import GameNav from '@/components/GameNav';
+import Sidebar from '@/components/Sidebar';
 
 // Leveling functions (mirrored from server lib for client use)
 function xpForLevel(level: number): number {
@@ -195,7 +196,8 @@ export default function Dashboard() {
   const givePresets = [1, 5, 10, 25];
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative lg:pl-56">
+      <Sidebar current="/dashboard" />
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[600px] h-[600px] rounded-full bg-purple-600/8 blur-[150px] -top-60 -right-40" />
@@ -251,7 +253,7 @@ export default function Dashboard() {
             {/* Hamburger — all screen sizes */}
             <button
               onClick={() => setMenuOpen(o => !o)}
-              className="w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-white"
+              className="lg:hidden w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-white"
               aria-label="Menü öffnen"
             >
               <span className={`block w-5 h-0.5 bg-current transition-all duration-300 origin-center ${menuOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
@@ -265,7 +267,7 @@ export default function Dashboard() {
         {menuOpen && <div className="fixed inset-0 z-[-1]" onClick={() => setMenuOpen(false)} />}
 
         {/* Slide-down panel */}
-        <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <div className={`lg:hidden grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
           <div className={`overflow-hidden transition-opacity duration-300 ${menuOpen ? 'opacity-100' : 'opacity-0'}`}>
             <div className="border-t border-white/5 bg-black/60 backdrop-blur-xl">
               <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">

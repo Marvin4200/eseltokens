@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 import NotificationsBell from '@/components/NotificationsBell';
 import GameNav from '@/components/GameNav';
+import Sidebar from '@/components/Sidebar';
 
 type Giveaway = {
   id: number;
@@ -144,7 +145,8 @@ export default function GiveawaysPage() {
   if (!session) return null;
 
   return (
-    <div className="h-screen overflow-hidden relative flex flex-col" style={{ height: '100dvh' }}>
+    <div className="h-screen overflow-hidden relative flex flex-col lg:pl-56" style={{ height: '100dvh' }}>
+      <Sidebar current="/giveaways" />
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[650px] h-[650px] rounded-full bg-amber-500/7 blur-[160px] -top-72 -left-44" />
         <div className="absolute w-[520px] h-[520px] rounded-full bg-purple-600/7 blur-[160px] -bottom-72 -right-44" />
@@ -162,7 +164,7 @@ export default function GiveawaysPage() {
             <NotificationsBell />
             <button
               onClick={() => setMenuOpen((m) => !m)}
-              className="w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
+              className="lg:hidden w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
               aria-label="Menü"
             >
               <span className={`block w-5 h-0.5 bg-current transition-all duration-300 origin-center ${menuOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
@@ -174,7 +176,7 @@ export default function GiveawaysPage() {
       </nav>
 
       {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />}
-      <div className={`flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+      <div className={`lg:hidden flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="overflow-hidden">
           <GameNav current="/giveaways" onNavigate={() => setMenuOpen(false)} />
         </div>

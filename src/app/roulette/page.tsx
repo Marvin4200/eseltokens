@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 import NotificationsBell from '@/components/NotificationsBell';
 import GameNav from '@/components/GameNav';
+import Sidebar from '@/components/Sidebar';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
@@ -99,7 +100,8 @@ export default function RoulettePage() {
   if (!session && initialLoad) return null;
 
   return (
-    <div className="h-screen overflow-hidden relative flex flex-col" style={{ height: '100dvh' }}>
+    <div className="h-screen overflow-hidden relative flex flex-col lg:pl-56" style={{ height: '100dvh' }}>
+      <Sidebar current="/roulette" />
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[600px] h-[600px] rounded-full bg-purple-600/8 blur-[150px] -top-60 -right-40" />
         <div className="absolute w-[400px] h-[400px] rounded-full bg-amber-500/6 blur-[120px] bottom-0 -left-32" />
@@ -117,7 +119,7 @@ export default function RoulettePage() {
             <NotificationsBell />
             <button
               onClick={() => setMenuOpen(m => !m)}
-              className="w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
+              className="lg:hidden w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
               aria-label="Menü"
             >
               <span className={`block w-5 h-0.5 bg-current transition-all duration-300 origin-center ${menuOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
@@ -133,7 +135,7 @@ export default function RoulettePage() {
         </div>
       </nav>
       {menuOpen && <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />}
-      <div className={`flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+      <div className={`lg:hidden flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="overflow-hidden">
           <GameNav current="/roulette" onNavigate={() => setMenuOpen(false)} />
         </div>

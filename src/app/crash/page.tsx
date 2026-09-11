@@ -6,6 +6,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 import NotificationsBell from '@/components/NotificationsBell';
 import GameNav from '@/components/GameNav';
+import Sidebar from '@/components/Sidebar';
 
 const MULTIPLIER_SPEED = 0.00006;
 
@@ -315,7 +316,8 @@ export default function Crash() {
   const phase = gameState?.status || 'betting';
 
   return (
-    <div className="h-screen overflow-hidden relative flex flex-col" style={{ height: '100dvh' }}>
+    <div className="h-screen overflow-hidden relative flex flex-col lg:pl-56" style={{ height: '100dvh' }}>
+      <Sidebar current="/crash" />
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute w-[600px] h-[600px] rounded-full bg-orange-600/8 blur-[150px] -top-60 -right-40" />
@@ -335,7 +337,7 @@ export default function Crash() {
             <NotificationsBell />
             <button
               onClick={() => setMenuOpen(m => !m)}
-              className="w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
+              className="lg:hidden w-8 h-8 flex flex-col items-center justify-center gap-[5px] text-gray-400 hover:text-white transition-colors flex-shrink-0"
               aria-label="Menü"
             >
               <span className={`block w-5 h-0.5 bg-current transition-all duration-300 origin-center ${menuOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
@@ -353,7 +355,7 @@ export default function Crash() {
       {menuOpen && (
         <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
       )}
-      <div className={`flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+      <div className={`lg:hidden flex-shrink-0 relative z-20 grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
         <div className="overflow-hidden">
           <GameNav current="/crash" onNavigate={() => setMenuOpen(false)} />
         </div>
