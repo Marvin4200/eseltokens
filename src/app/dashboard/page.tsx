@@ -87,6 +87,25 @@ interface Transaction {
   createdAt: string;
 }
 
+// Kompakte Stat-Kachel fuer die neue Bento-Leiste oben -- ersetzt die alte grosse
+// Hero-Karte, die Level und Guthaben in einer einzigen breiten Box zusammenquetschte.
+function StatTile({ icon, label, value, sub, accentClass }: { icon: string; label: string; value: React.ReactNode; sub?: string; accentClass?: string }) {
+  return (
+    <div className="game-card p-4 relative overflow-hidden">
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${accentClass ?? 'bg-white/5 border border-white/10'}`}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] text-gray-500 uppercase tracking-widest truncate">{label}</p>
+          <p className="text-lg font-bold text-white leading-tight truncate">{value}</p>
+          {sub && <p className="text-[11px] text-gray-600 truncate">{sub}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
@@ -101,6 +120,7 @@ export default function Dashboard() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'level' | 'tokens' | 'given'>('level');
+  const [actionTab, setActionTab] = useState<'gift' | 'redeem'>('gift');
   const userRole = (session?.user as any)?.role;
 
   useEffect(() => {
@@ -194,6 +214,8 @@ export default function Dashboard() {
   const leaderboardUsers =
     leaderboardTab === 'level' ? sortedByLevel : leaderboardTab === 'tokens' ? sortedByTokens : sortedByGiven;
   const givePresets = [1, 5, 10, 25];
+  const tokensToNextLevel = Math.ceil((levelInfo.xpNeeded - levelInfo.currentXp) / 10);
+  const rank = sortedByLevel.findIndex(u => u.id === userId) + 1;
 
   return (
     <div className="min-h-screen relative lg:pl-56">
@@ -206,13 +228,14 @@ export default function Dashboard() {
 
       {/* Top Navigation Bar */}
       <nav className="relative z-30 border-b border-purple-500/10 bg-black/20 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/dashboard')}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer lg:hidden" onClick={() => router.push('/dashboard')}>
             <span className="text-2xl">🫏</span>
             <h1 className="text-xl font-bold">
               <span className="glow-text">Esel</span><span className="text-amber-400">Tokens</span>
             </h1>
           </div>
+          <h2 className="hidden lg:block text-sm font-semibold text-gray-400 tracking-wide">Dashboard</h2>
 
           {/* Right: user dropdown (desktop) + hamburger */}
           <div className="flex items-center gap-3">
@@ -270,7 +293,7 @@ export default function Dashboard() {
         <div className={`lg:hidden grid transition-[grid-template-rows] duration-300 ease-in-out ${menuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
           <div className={`overflow-hidden transition-opacity duration-300 ${menuOpen ? 'opacity-100' : 'opacity-0'}`}>
             <div className="border-t border-white/5 bg-black/60 backdrop-blur-xl">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
                 <div className="mb-4">
                   <GameNav current="/dashboard" onNavigate={() => setMenuOpen(false)} />
                 </div>
@@ -311,395 +334,368 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 
-        {/* ── HERO: Level + Tokens ── */}
-        <div className="game-card p-5 sm:p-8 animate-fade-in-up relative overflow-hidden">
-          <div className={`absolute -top-16 -right-16 w-48 h-48 bg-gradient-to-br ${getLevelColor(levelInfo.level)} opacity-[0.07] rounded-full blur-[60px]`} />
-          <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/4 rounded-full blur-[100px] translate-x-1/2 -translate-y-1/2" />
-          <div className="relative flex flex-col md:flex-row gap-6 md:gap-0 md:items-center md:justify-between">
-
-            {/* Left: Level */}
-            <div className="flex items-center gap-5">
-              <div className="relative flex-shrink-0">
-                <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br ${getLevelColor(levelInfo.level)} flex items-center justify-center shadow-lg`}>
-                  <span className="text-3xl sm:text-4xl font-black text-black/80">{levelInfo.level}</span>
-                </div>
-                {levelInfo.level >= 20 && (
-                  <div className="absolute -top-1.5 -right-1.5 text-xs px-1.5 py-0.5 rounded-full bg-black/60 border border-white/10 text-white/60 font-medium">
-                    {levelInfo.level >= 50 ? '🔥' : '⚡'}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-gray-500 uppercase tracking-widest mb-0.5">Dein Level</p>
-                <p className="text-xl sm:text-2xl font-bold text-white leading-tight">{getLevelTitle(levelInfo.level)}</p>
-                <p className="text-xs text-gray-500 mt-1">{userXp.toLocaleString('de-DE')} XP gesamt</p>
-                <div className="mt-2.5 w-40 sm:w-56">
-                  <div className="xp-bar-bg">
-                    <div
-                      className={`xp-bar-fill bg-gradient-to-r ${getLevelColor(levelInfo.level)}`}
-                      style={{ width: `${Math.min(100, levelInfo.progress * 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {levelInfo.currentXp.toLocaleString('de-DE')} / {levelInfo.xpNeeded.toLocaleString('de-DE')} XP
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden md:block w-px h-20 bg-white/5 mx-8" />
-            <div className="md:hidden h-px bg-white/5" />
-
-            {/* Right: Tokens */}
-            <div className="text-center md:text-right">
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Dein Guthaben</p>
-              <div className="flex items-baseline gap-2 justify-center md:justify-end">
-                <span className="token-display" style={{ fontSize: 'clamp(2rem, 8vw, 3rem)' }}>{userBalance}</span>
-                <span className="text-gray-500 text-base sm:text-lg">Tokens</span>
-              </div>
-              <p className="text-xs text-gray-600 mt-1">
-                {Math.ceil((levelInfo.xpNeeded - levelInfo.currentXp) / 10)} Tokens bis Level {levelInfo.level + 1}
-              </p>
-            </div>
+        {/* ── Greeting ── */}
+        <div className="mb-5 sm:mb-6 flex items-center justify-between flex-wrap gap-2 animate-fade-in-up">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Willkommen zurück{userName ? `, ${userName}` : ''} 👋</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Hier ist dein Überblick</p>
+          </div>
+          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getLevelColor(levelInfo.level)} flex items-center justify-center shadow-lg flex-shrink-0`}>
+            <span className="text-2xl font-black text-black/80">{levelInfo.level}</span>
           </div>
         </div>
 
-        {/* ── TOKEN ACTIONS: Gift + Redeem ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        {/* ── STAT STRIP ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6 animate-fade-in-up stagger-1">
+          <StatTile icon="🏅" label="Level" value={getLevelTitle(levelInfo.level)} sub={`${userXp.toLocaleString('de-DE')} XP gesamt`} accentClass="bg-purple-500/15 border border-purple-500/20" />
+          <StatTile icon="🪙" label="Guthaben" value={<span className="token-display text-lg">{userBalance}</span>} sub="Tokens" accentClass="bg-amber-500/15 border border-amber-500/20" />
+          <StatTile icon="🎯" label="Bis Level +1" value={tokensToNextLevel.toLocaleString('de-DE')} sub="Tokens nötig" accentClass="bg-blue-500/15 border border-blue-500/20" />
+          <StatTile icon="📊" label="Rang" value={rank > 0 ? `#${rank}` : '–'} sub={`von ${users.length} Mitgliedern`} accentClass="bg-pink-500/15 border border-pink-500/20" />
+        </div>
 
-          {/* Gift card */}
-          <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden">
+        {/* XP progress bar, standalone strip under stats */}
+        <div className="game-card p-4 mb-5 sm:mb-6 animate-fade-in-up stagger-1">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <span>Fortschritt zu Level {levelInfo.level + 1}</span>
+            <span>{levelInfo.currentXp.toLocaleString('de-DE')} / {levelInfo.xpNeeded.toLocaleString('de-DE')} XP</span>
+          </div>
+          <div className="xp-bar-bg">
+            <div
+              className={`xp-bar-fill bg-gradient-to-r ${getLevelColor(levelInfo.level)}`}
+              style={{ width: `${Math.min(100, levelInfo.progress * 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* ── MAIN GRID: Actions (2/3) + Leaderboard (1/3) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-5 sm:mb-6">
+
+          {/* Action card with tabs — merges Gift + Redeem into one unit */}
+          <div className="lg:col-span-2 game-card p-5 sm:p-6 animate-fade-in-up stagger-2 relative overflow-hidden">
             <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-purple-500/5 rounded-full blur-[40px]" />
             <div className="relative">
-              <div className="flex items-center gap-2 mb-5">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-base">🎁</div>
-                <h2 className="text-lg font-bold text-white">Token verschenken</h2>
-              </div>
-
-              <div className="mb-4">
-                <label className="text-xs text-gray-500 uppercase tracking-widest mb-1.5 block">Empfänger</label>
-                <select
-                  value={selectedUser}
-                  onChange={(e) => setSelectedUser(e.target.value)}
-                  className="game-select w-full"
-                >
-                  <option value="">User auswählen…</option>
-                  {users.filter(u => u.id !== userId).map(user => (
-                    <option key={user.id} value={user.id}>{user.username}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="text-xs text-gray-500 uppercase tracking-widest mb-1.5 block">Anzahl</label>
-                <div className="flex gap-2 mb-2">
-                  {givePresets.map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setGiveAmount(p)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
-                        giveAmount === p
-                          ? 'bg-purple-500/25 border-purple-500/50 text-purple-300'
-                          : 'bg-white/[0.03] border-white/10 text-gray-400 hover:bg-white/[0.07] hover:text-white'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="number"
-                  value={giveAmount}
-                  onChange={e => setGiveAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="game-input w-full text-center"
-                  min={1}
-                  placeholder="Eigener Betrag"
-                />
-              </div>
-
-              <button
-                onClick={giveToken}
-                disabled={!selectedUser || userBalance < giveAmount}
-                className={`w-full btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed ${showGiveEffect ? 'animate-scale-in' : ''}`}
-              >
-                🎁 {giveAmount} Token{giveAmount !== 1 ? 's' : ''} verschenken
-              </button>
-              {!selectedUser && <p className="text-xs text-gray-600 text-center mt-2">Wähle zuerst einen Empfänger</p>}
-              {selectedUser && userBalance < giveAmount && <p className="text-xs text-red-500/70 text-center mt-2">Nicht genug Tokens</p>}
-            </div>
-          </div>
-
-          {/* Redeem card */}
-          <div className="game-card p-5 sm:p-6 animate-fade-in-up stagger-3 relative overflow-hidden">
-            <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-amber-500/5 rounded-full blur-[40px]" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-base">✨</div>
-                  <h2 className="text-lg font-bold text-white">XP einlösen</h2>
-                </div>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium">
-                  1 Token = 10 XP
-                </span>
-              </div>
-
-              <div className="mb-4">
-                <label className="text-xs text-gray-500 uppercase tracking-widest mb-1.5 block">Anzahl Tokens</label>
-                <div className="flex gap-2 mb-2">
-                  {[10, 50, 100].map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setRedeemAmount(Math.min(p, userBalance))}
-                      disabled={userBalance < p}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                        redeemAmount === p
-                          ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
-                          : 'bg-white/[0.03] border-white/10 text-gray-400 hover:bg-white/[0.07] hover:text-white'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setRedeemAmount(userBalance)}
-                    disabled={userBalance < 1}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                      redeemAmount === userBalance && userBalance > 0
-                        ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
-                        : 'bg-white/[0.03] border-white/10 text-gray-400 hover:bg-white/[0.07] hover:text-white'
-                    }`}
-                  >
-                    MAX
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  value={redeemAmount}
-                  onChange={e => setRedeemAmount(Math.max(1, Math.min(userBalance, parseInt(e.target.value) || 1)))}
-                  className="game-input w-full text-center"
-                  min={1}
-                  max={userBalance}
-                />
-              </div>
-
-              {/* Live XP Preview */}
-              <div className="mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                <div className="flex justify-between text-xs text-gray-500 mb-2">
-                  <span>Vorschau nach Einlösen</span>
-                  {levelsGained > 0 && (
-                    <span className="text-amber-400 font-bold">+{levelsGained} Level{levelsGained > 1 ? 's' : ''}! 🎉</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${getLevelColor(levelInfo.level)} flex items-center justify-center flex-shrink-0`}>
-                    <span className="text-[10px] font-black text-black/80">{levelInfo.level}</span>
-                  </div>
-                  <div className="flex-1 relative">
-                    <div className="xp-bar-bg">
-                      <div
-                        className={`xp-bar-fill bg-gradient-to-r ${getLevelColor(levelInfo.level)} opacity-30`}
-                        style={{ width: `${Math.min(100, levelInfo.progress * 100)}%` }}
-                      />
-                      <div
-                        className={`absolute inset-0 xp-bar-fill bg-gradient-to-r ${getLevelColor(previewLevel.level)}`}
-                        style={{ width: `${Math.min(100, previewLevel.progress * 100)}%`, top: 0 }}
-                      />
-                    </div>
-                  </div>
-                  <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${getLevelColor(previewLevel.level)} flex items-center justify-center flex-shrink-0`}>
-                    <span className="text-[10px] font-black text-black/80">{previewLevel.level}</span>
-                  </div>
-                </div>
-                <div className="flex justify-between text-xs text-gray-600">
-                  <span>{userXp.toLocaleString('de-DE')} XP</span>
-                  <span className="text-amber-400/80">+{(redeemAmount * 10).toLocaleString('de-DE')} XP</span>
-                  <span>{previewXp.toLocaleString('de-DE')} XP</span>
-                </div>
-              </div>
-
-              <button
-                onClick={redeemToken}
-                disabled={userBalance < 1 || redeemAmount < 1}
-                className={`w-full btn-gold inline-flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed ${showRedeemEffect ? 'animate-scale-in' : ''}`}
-              >
-                ✨ {redeemAmount} Token{redeemAmount !== 1 ? 's' : ''} einlösen (+{(redeemAmount * 10).toLocaleString('de-DE')} XP)
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── LEADERBOARD + TRANSACTIONS ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-
-          {/* Leaderboard */}
-          <div className="game-card p-4 sm:p-6 animate-fade-in-up stagger-2">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🏆</span>
-                <h2 className="text-xl font-bold text-white">Leaderboard</h2>
-              </div>
-              {/* Tab pills */}
-              <div className="flex gap-1 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+              <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] mb-5 w-full sm:w-fit">
                 <button
-                  onClick={() => setLeaderboardTab('level')}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                    leaderboardTab === 'level'
+                  onClick={() => setActionTab('gift')}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    actionTab === 'gift'
                       ? 'bg-purple-500/25 text-purple-300 border border-purple-500/30'
                       : 'text-gray-500 hover:text-gray-300'
                   }`}
                 >
-                  🏅 Level
+                  🎁 Verschenken
                 </button>
                 <button
-                  onClick={() => setLeaderboardTab('tokens')}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                    leaderboardTab === 'tokens'
+                  onClick={() => setActionTab('redeem')}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    actionTab === 'redeem'
                       ? 'bg-amber-500/25 text-amber-300 border border-amber-500/30'
                       : 'text-gray-500 hover:text-gray-300'
                   }`}
                 >
-                  🪙 Tokens
-                </button>
-                <button
-                  onClick={() => setLeaderboardTab('given')}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                    leaderboardTab === 'given'
-                      ? 'bg-pink-500/25 text-pink-300 border border-pink-500/30'
-                      : 'text-gray-500 hover:text-gray-300'
-                  }`}
-                >
-                  🎁 Verschenkt
+                  ✨ XP einlösen
                 </button>
               </div>
+
+              {actionTab === 'gift' ? (
+                <div>
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-500 uppercase tracking-widest mb-1.5 block">Empfänger</label>
+                    <select
+                      value={selectedUser}
+                      onChange={(e) => setSelectedUser(e.target.value)}
+                      className="game-select w-full"
+                    >
+                      <option value="">User auswählen…</option>
+                      {users.filter(u => u.id !== userId).map(user => (
+                        <option key={user.id} value={user.id}>{user.username}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-500 uppercase tracking-widest mb-1.5 block">Anzahl</label>
+                    <div className="flex gap-2 mb-2">
+                      {givePresets.map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setGiveAmount(p)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
+                            giveAmount === p
+                              ? 'bg-purple-500/25 border-purple-500/50 text-purple-300'
+                              : 'bg-white/[0.03] border-white/10 text-gray-400 hover:bg-white/[0.07] hover:text-white'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="number"
+                      value={giveAmount}
+                      onChange={e => setGiveAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="game-input w-full text-center"
+                      min={1}
+                      placeholder="Eigener Betrag"
+                    />
+                  </div>
+
+                  <button
+                    onClick={giveToken}
+                    disabled={!selectedUser || userBalance < giveAmount}
+                    className={`w-full btn-primary inline-flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed ${showGiveEffect ? 'animate-scale-in' : ''}`}
+                  >
+                    🎁 {giveAmount} Token{giveAmount !== 1 ? 's' : ''} verschenken
+                  </button>
+                  {!selectedUser && <p className="text-xs text-gray-600 text-center mt-2">Wähle zuerst einen Empfänger</p>}
+                  {selectedUser && userBalance < giveAmount && <p className="text-xs text-red-500/70 text-center mt-2">Nicht genug Tokens</p>}
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="text-xs text-gray-500 uppercase tracking-widest block">Anzahl Tokens</label>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium">
+                      1 Token = 10 XP
+                    </span>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex gap-2 mb-2">
+                      {[10, 50, 100].map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setRedeemAmount(Math.min(p, userBalance))}
+                          disabled={userBalance < p}
+                          className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                            redeemAmount === p
+                              ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
+                              : 'bg-white/[0.03] border-white/10 text-gray-400 hover:bg-white/[0.07] hover:text-white'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setRedeemAmount(userBalance)}
+                        disabled={userBalance < 1}
+                        className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                          redeemAmount === userBalance && userBalance > 0
+                            ? 'bg-amber-500/25 border-amber-500/50 text-amber-300'
+                            : 'bg-white/[0.03] border-white/10 text-gray-400 hover:bg-white/[0.07] hover:text-white'
+                        }`}
+                      >
+                        MAX
+                      </button>
+                    </div>
+                    <input
+                      type="number"
+                      value={redeemAmount}
+                      onChange={e => setRedeemAmount(Math.max(1, Math.min(userBalance, parseInt(e.target.value) || 1)))}
+                      className="game-input w-full text-center"
+                      min={1}
+                      max={userBalance}
+                    />
+                  </div>
+
+                  {/* Live XP Preview */}
+                  <div className="mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                    <div className="flex justify-between text-xs text-gray-500 mb-2">
+                      <span>Vorschau nach Einlösen</span>
+                      {levelsGained > 0 && (
+                        <span className="text-amber-400 font-bold">+{levelsGained} Level{levelsGained > 1 ? 's' : ''}! 🎉</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${getLevelColor(levelInfo.level)} flex items-center justify-center flex-shrink-0`}>
+                        <span className="text-[10px] font-black text-black/80">{levelInfo.level}</span>
+                      </div>
+                      <div className="flex-1 relative">
+                        <div className="xp-bar-bg">
+                          <div
+                            className={`xp-bar-fill bg-gradient-to-r ${getLevelColor(levelInfo.level)} opacity-30`}
+                            style={{ width: `${Math.min(100, levelInfo.progress * 100)}%` }}
+                          />
+                          <div
+                            className={`absolute inset-0 xp-bar-fill bg-gradient-to-r ${getLevelColor(previewLevel.level)}`}
+                            style={{ width: `${Math.min(100, previewLevel.progress * 100)}%`, top: 0 }}
+                          />
+                        </div>
+                      </div>
+                      <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${getLevelColor(previewLevel.level)} flex items-center justify-center flex-shrink-0`}>
+                        <span className="text-[10px] font-black text-black/80">{previewLevel.level}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>{userXp.toLocaleString('de-DE')} XP</span>
+                      <span className="text-amber-400/80">+{(redeemAmount * 10).toLocaleString('de-DE')} XP</span>
+                      <span>{previewXp.toLocaleString('de-DE')} XP</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={redeemToken}
+                    disabled={userBalance < 1 || redeemAmount < 1}
+                    className={`w-full btn-gold inline-flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed ${showRedeemEffect ? 'animate-scale-in' : ''}`}
+                  >
+                    ✨ {redeemAmount} Token{redeemAmount !== 1 ? 's' : ''} einlösen (+{(redeemAmount * 10).toLocaleString('de-DE')} XP)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Leaderboard — narrow side column, compact top 5 */}
+          <div className="game-card p-4 sm:p-5 animate-fade-in-up stagger-3 flex flex-col min-h-0">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🏆</span>
+              <h2 className="text-base font-bold text-white">Leaderboard</h2>
+            </div>
+            <div className="flex gap-1 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06] mb-3">
+              <button
+                onClick={() => setLeaderboardTab('level')}
+                className={`flex-1 py-1 rounded-md text-[11px] font-bold transition-all ${
+                  leaderboardTab === 'level'
+                    ? 'bg-purple-500/25 text-purple-300 border border-purple-500/30'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                🏅 Lvl
+              </button>
+              <button
+                onClick={() => setLeaderboardTab('tokens')}
+                className={`flex-1 py-1 rounded-md text-[11px] font-bold transition-all ${
+                  leaderboardTab === 'tokens'
+                    ? 'bg-amber-500/25 text-amber-300 border border-amber-500/30'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                🪙 TKN
+              </button>
+              <button
+                onClick={() => setLeaderboardTab('given')}
+                className={`flex-1 py-1 rounded-md text-[11px] font-bold transition-all ${
+                  leaderboardTab === 'given'
+                    ? 'bg-pink-500/25 text-pink-300 border border-pink-500/30'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                🎁 Geg.
+              </button>
             </div>
 
-            <div className="space-y-2">
-              {leaderboardUsers.map((user, index) => {
+            <div className="space-y-1.5">
+              {leaderboardUsers.slice(0, 6).map((user, index) => {
                 const medals = ['🥇', '🥈', '🥉'];
                 const isCurrentUser = user.id === userId;
                 const userLevelInfo = getLevelInfo(user.xp ?? 0);
                 return (
                   <div
                     key={user.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
+                    className={`flex items-center gap-2 p-2 rounded-lg transition-all duration-200 ${
                       isCurrentUser
                         ? 'bg-purple-500/10 border border-purple-500/20'
                         : 'bg-white/[0.02] hover:bg-white/[0.05]'
                     }`}
                   >
-                    <span className="text-base w-7 text-center flex-shrink-0">
-                      {index < 3 ? medals[index] : <span className="text-gray-600 text-xs font-mono">#{index + 1}</span>}
+                    <span className="text-sm w-5 text-center flex-shrink-0">
+                      {index < 3 ? medals[index] : <span className="text-gray-600 text-[10px] font-mono">#{index + 1}</span>}
                     </span>
-                    <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getLevelColor(userLevelInfo.level)} flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-[10px] font-black text-black/80">{userLevelInfo.level}</span>
-                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium text-sm truncate ${isCurrentUser ? 'text-purple-300' : 'text-gray-300'}`}>
-                        {user.username}
-                        {isCurrentUser && <span className="text-xs text-purple-500 ml-1">(Du)</span>}
+                      <p className={`font-medium text-xs truncate ${isCurrentUser ? 'text-purple-300' : 'text-gray-300'}`}>
+                        {user.username}{isCurrentUser && <span className="text-[10px] text-purple-500 ml-1">(Du)</span>}
                       </p>
-                      {leaderboardTab === 'level' && (
-                        <p className="text-xs text-gray-600 truncate">{getLevelTitle(userLevelInfo.level)}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {leaderboardTab === 'level' ? (
+                        <p className={`font-bold text-xs ${index === 0 ? 'text-amber-400' : 'text-gray-400'}`}>Lvl {userLevelInfo.level}</p>
+                      ) : leaderboardTab === 'tokens' ? (
+                        <p className={`font-bold text-xs ${index === 0 ? 'text-amber-400' : 'text-gray-400'}`}>{user.balance}</p>
+                      ) : (
+                        <p className={`font-bold text-xs ${index === 0 ? 'text-pink-400' : 'text-gray-400'}`}>{(user.givenTotal ?? 0).toLocaleString('de-DE')}</p>
                       )}
                     </div>
-                    {leaderboardTab === 'level' ? (
-                      <div className="text-right flex-shrink-0">
-                        <p className={`font-bold text-sm ${index === 0 ? 'text-amber-400' : 'text-gray-400'}`}>Lvl {userLevelInfo.level}</p>
-                        <p className="text-xs text-gray-600">{(user.xp ?? 0).toLocaleString('de-DE')} XP</p>
-                      </div>
-                    ) : leaderboardTab === 'tokens' ? (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className={`font-bold ${index === 0 ? 'text-amber-400' : 'text-gray-400'}`}>{user.balance}</span>
-                        <span className="text-xs text-gray-600">TKN</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className={`font-bold ${index === 0 ? 'text-pink-400' : 'text-gray-400'}`}>{(user.givenTotal ?? 0).toLocaleString('de-DE')}</span>
-                        <span className="text-xs text-gray-600">TKN</span>
-                      </div>
-                    )}
                   </div>
                 );
               })}
               {leaderboardUsers.length === 0 && (
-                <p className="text-gray-600 text-center py-8">Noch keine Mitglieder</p>
+                <p className="text-gray-600 text-center text-sm py-6">Noch keine Mitglieder</p>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Transaction History */}
-          <div className="game-card p-4 sm:p-6 animate-fade-in-up stagger-3">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xl">📜</span>
-              <h2 className="text-xl font-bold text-white">Letzte Aktivitäten</h2>
-            </div>
-            <div className="space-y-2">
-              {transactions.slice(0, 12).map((tx, index) => (
-                <div
-                  key={tx.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-all"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <span className="mt-0.5 text-base">
-                    {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_starter_pack' || tx.type === 'reward_voice_activity' ? '🎁' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-300">
-                      {tx.type === 'give'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> → <span className="text-amber-400 font-medium">{tx.toUsername}</span></>
-                        : tx.type === 'redeem'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> hat eingelöst</>
-                        : tx.type === 'coinflip_win'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> 🪙</>
-                        : tx.type === 'coinflip_lose'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> 🪙</>
-                        : tx.type === 'reward_starter_pack'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Starter Pack</>
-                        : tx.type === 'reward_daily'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> claimte <span className="text-green-400 font-medium">{tx.amount}</span> Daily</>
-                        : tx.type === 'reward_topgg_vote'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Vote Reward</>
-                        : tx.type === 'reward_voice_activity'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Voice Reward</>
-                        : tx.type === 'blackjack_win'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei BJ 🃏</>
-                        : tx.type === 'blackjack_lose'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> bei BJ 🃏</>
-                        : tx.type === 'crash_win'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei Crash 📈</>
-                        : tx.type === 'crash_lose'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> bei Crash 📈</>
-                        : tx.type === 'jackpot_win'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> Jackpot 🎰</>
-                        : tx.type === 'jackpot_lose'
-                        ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> Jackpot 🎰</>
-                        : <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span></>
-                      }
-                    </p>
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      {new Date(tx.createdAt).toLocaleString('de-DE', {
-                        day: '2-digit', month: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                    tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_voice_activity'
-                      ? 'bg-green-500/10 text-green-400'
-                      : tx.type === 'redeem' || tx.type === 'coinflip_lose' || tx.type === 'blackjack_lose' || tx.type === 'crash_lose' || tx.type === 'jackpot_lose'
-                      ? 'bg-red-500/10 text-red-400'
-                      : 'bg-amber-500/10 text-amber-400'
-                  }`}>
-                    {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_voice_activity' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
-                  </span>
+        {/* ── ACTIVITY FEED — full width strip ── */}
+        <div className="game-card p-4 sm:p-6 animate-fade-in-up stagger-3">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xl">📜</span>
+            <h2 className="text-xl font-bold text-white">Letzte Aktivitäten</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {transactions.slice(0, 12).map((tx, index) => (
+              <div
+                key={tx.id}
+                className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-all"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <span className="mt-0.5 text-base">
+                  {tx.type === 'give' ? '🎁' : tx.type === 'redeem' ? '✨' : tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_starter_pack' || tx.type === 'reward_voice_activity' ? '🎁' : tx.type === 'blackjack_win' || tx.type === 'blackjack_lose' ? '🃏' : tx.type === 'crash_win' || tx.type === 'crash_lose' ? '📈' : tx.type === 'jackpot_win' || tx.type === 'jackpot_lose' ? '🎰' : '🪙'}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-300">
+                    {tx.type === 'give'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> → <span className="text-amber-400 font-medium">{tx.toUsername}</span></>
+                      : tx.type === 'redeem'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> hat eingelöst</>
+                      : tx.type === 'coinflip_win'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> 🪙</>
+                      : tx.type === 'coinflip_lose'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> 🪙</>
+                      : tx.type === 'reward_starter_pack'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Starter Pack</>
+                      : tx.type === 'reward_daily'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> claimte <span className="text-green-400 font-medium">{tx.amount}</span> Daily</>
+                      : tx.type === 'reward_topgg_vote'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Vote Reward</>
+                      : tx.type === 'reward_voice_activity'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> bekam <span className="text-green-400 font-medium">{tx.amount}</span> Voice Reward</>
+                      : tx.type === 'blackjack_win'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei BJ 🃏</>
+                      : tx.type === 'blackjack_lose'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> bei BJ 🃏</>
+                      : tx.type === 'crash_win'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> bei Crash 📈</>
+                      : tx.type === 'crash_lose'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> bei Crash 📈</>
+                      : tx.type === 'jackpot_win'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> gewann <span className="text-green-400 font-medium">{tx.amount}</span> Jackpot 🎰</>
+                      : tx.type === 'jackpot_lose'
+                      ? <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span> Jackpot 🎰</>
+                      : <><span className="text-purple-400 font-medium">{tx.fromUsername}</span> verlor <span className="text-red-400 font-medium">{tx.amount}</span></>
+                    }
+                  </p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {new Date(tx.createdAt).toLocaleString('de-DE', {
+                      day: '2-digit', month: '2-digit', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit'
+                    })}
+                  </p>
                 </div>
-              ))}
-              {transactions.length === 0 && (
-                <p className="text-gray-600 text-center py-8">Noch keine Transaktionen</p>
-              )}
-            </div>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                  tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_voice_activity'
+                    ? 'bg-green-500/10 text-green-400'
+                    : tx.type === 'redeem' || tx.type === 'coinflip_lose' || tx.type === 'blackjack_lose' || tx.type === 'crash_lose' || tx.type === 'jackpot_lose'
+                    ? 'bg-red-500/10 text-red-400'
+                    : 'bg-amber-500/10 text-amber-400'
+                }`}>
+                  {tx.type === 'give' || tx.type === 'coinflip_win' || tx.type === 'blackjack_win' || tx.type === 'crash_win' || tx.type === 'jackpot_win' || tx.type === 'reward_starter_pack' || tx.type === 'reward_daily' || tx.type === 'reward_topgg_vote' || tx.type === 'reward_voice_activity' ? `+${tx.amount || 1}` : `-${tx.amount || 1}`}
+                </span>
+              </div>
+            ))}
+            {transactions.length === 0 && (
+              <p className="text-gray-600 text-center py-8 col-span-full">Noch keine Transaktionen</p>
+            )}
           </div>
         </div>
       </div>
