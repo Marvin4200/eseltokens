@@ -102,6 +102,64 @@ export default function EarnPage() {
   }
   if (!session && initialLoad) return null;
 
+  const rewards: Array<{
+    key: 'starter' | 'daily' | 'vote';
+    icon: string;
+    accent: string;
+    title: string;
+    cadence: string;
+    desc: string;
+    amount: number;
+    available: boolean;
+    remainingMs?: number;
+    extra?: React.ReactNode;
+  }> = [
+    {
+      key: 'starter',
+      icon: '🎁',
+      accent: 'from-amber-500/20 to-orange-500/10 border-amber-500/25',
+      title: 'Starter Pack',
+      cadence: 'Einmalig',
+      desc: 'Ein einmaliges Willkommensgeschenk für neue Mitglieder.',
+      amount: s?.starterPack?.amount ?? 0,
+      available: !!s?.starterPack?.claimable,
+    },
+    {
+      key: 'daily',
+      icon: '🌅',
+      accent: 'from-purple-500/20 to-fuchsia-500/10 border-purple-500/25',
+      title: 'Daily Reward',
+      cadence: 'Alle 24h',
+      desc: 'Hol dir jeden Tag gratis Tokens ab — einfach vorbeischauen.',
+      amount: s?.daily?.amount ?? 0,
+      available: !!s?.daily?.eligible,
+      remainingMs: s?.daily?.remainingMs ?? 0,
+    },
+    {
+      key: 'vote',
+      icon: '🗳️',
+      accent: 'from-blue-500/20 to-cyan-500/10 border-blue-500/25',
+      title: 'Vote to Earn',
+      cadence: 'Alle 12h',
+      desc: 'Vote auf top.gg für den Fahrstuhl Bot und hol dir deine Belohnung.',
+      amount: s?.vote?.amount ?? 0,
+      available: !!s?.vote?.eligible,
+      remainingMs: s?.vote?.remainingMs ?? 0,
+      extra: (
+        <a
+          href={s?.vote?.url || '#'}
+          target="_blank"
+          rel="noreferrer"
+          className={`btn-chip text-center text-xs ${s?.vote?.url ? '' : 'opacity-40 pointer-events-none'}`}
+        >
+          🔗 Zu top.gg
+        </a>
+      ),
+    },
+  ];
+
+  const totalAvailable = rewards.filter(r => r.available).length;
+
   return (
     <div className="h-screen overflow-hidden relative flex flex-col lg:pl-56" style={{ height: '100dvh' }}>
       <Sidebar current="/earn" />
@@ -112,12 +170,13 @@ export default function EarnPage() {
 
       <nav className="relative z-30 border-b border-purple-500/10 bg-black/20 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer" onClick={() => router.push('/dashboard')}>
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer lg:hidden" onClick={() => router.push('/dashboard')}>
             <span className="text-xl sm:text-2xl">🫏</span>
             <h1 className="text-base sm:text-xl font-bold">
               <span className="glow-text">Esel</span><span className="text-amber-400">Tokens</span>
             </h1>
           </div>
+          <h2 className="hidden lg:block text-sm font-semibold text-gray-400 tracking-wide">+ Tokens</h2>
           <div className="flex items-center gap-2 sm:gap-3">
             <NotificationsBell />
             <button
@@ -141,114 +200,105 @@ export default function EarnPage() {
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 flex-1 min-h-0 overflow-auto">
-        <div className="mb-4 flex items-end justify-between gap-3">
+
+        {/* ── Greeting header, same language as Dashboard ── */}
+        <div className="mb-5 sm:mb-6 flex items-center justify-between flex-wrap gap-3 animate-fade-in-up">
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-widest">+ Tokens</p>
-            <h1 className="text-2xl font-black text-white">Verdienen</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Tokens verdienen 💰</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {totalAvailable > 0
+                ? `${totalAvailable} Belohnung${totalAvailable !== 1 ? 'en' : ''} gerade verfügbar`
+                : 'Alle Belohnungen abgeholt — schau später wieder vorbei'}
+            </p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500 uppercase tracking-widest">Guthaben</p>
-            <p className="text-xl font-black text-amber-300">{balance} Tokens</p>
+          <div className="game-card px-5 py-3 flex items-center gap-3">
+            <span className="text-2xl">🪙</span>
+            <div>
+              <p className="text-[11px] text-gray-500 uppercase tracking-widest">Guthaben</p>
+              <p className="token-display text-lg leading-tight">{balance}</p>
+            </div>
           </div>
         </div>
 
         {msg && (
-          <div className="mb-4 text-sm text-gray-200 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+          <div className="mb-4 text-sm text-gray-200 bg-white/5 border border-white/10 rounded-xl px-4 py-3 animate-fade-in-up">
             {msg}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Starter Pack */}
-          <div className="game-card p-5 sm:p-6 relative overflow-hidden">
-            {fx === 'starter' && <div className="absolute inset-0 reward-burst pointer-events-none" />}
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-base">🎁</div>
-              <div className="min-w-0">
-                <p className="text-white font-bold">Starter Pack</p>
-                <p className="text-xs text-gray-500">Einmalig</p>
+        {/* ── Reward cards ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          {rewards.map((r, i) => (
+            <div
+              key={r.key}
+              className={`game-card p-6 relative overflow-hidden flex flex-col animate-fade-in-up ${i === 0 ? 'stagger-1' : i === 1 ? 'stagger-2' : 'stagger-3'}`}
+            >
+              {fx === r.key && <div className="absolute inset-0 reward-burst pointer-events-none" />}
+              <div className={`absolute -top-10 -right-10 w-40 h-40 rounded-full bg-gradient-to-br ${r.accent} opacity-40 blur-[50px]`} />
+
+              <div className="relative flex items-start justify-between mb-4">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${r.accent} border flex items-center justify-center text-2xl flex-shrink-0`}>
+                  {r.icon}
+                </div>
+                {r.available ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    Verfügbar
+                  </span>
+                ) : r.remainingMs !== undefined ? (
+                  <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-500">
+                    ⏳ {fmtMs(r.remainingMs)}
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-600">
+                    ✓ Erledigt
+                  </span>
+                )}
+              </div>
+
+              <div className="relative flex-1">
+                <p className="text-white font-bold text-lg leading-tight">{r.title}</p>
+                <p className="text-xs text-gray-500 mb-3">{r.cadence}</p>
+                <p className="text-sm text-gray-400 leading-relaxed">{r.desc}</p>
+              </div>
+
+              <div className="relative mt-5">
+                <div className="flex items-baseline gap-1.5 mb-3">
+                  <span className="token-display text-2xl">+{r.amount}</span>
+                  <span className="text-xs text-gray-500">Tokens</span>
+                </div>
+
+                {r.key === 'vote' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {r.extra}
+                    <button
+                      onClick={() => claim('vote')}
+                      className="btn-primary text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                      disabled={!r.available}
+                    >
+                      Claim
+                    </button>
+                  </div>
+                ) : r.available ? (
+                  <button onClick={() => claim(r.key)} className="w-full btn-gold py-2.5 rounded-xl font-bold">
+                    Jetzt claimen
+                  </button>
+                ) : (
+                  <button disabled className="w-full py-2.5 rounded-xl font-bold bg-white/[0.03] border border-white/10 text-gray-600 cursor-not-allowed">
+                    {r.remainingMs !== undefined ? 'Noch nicht bereit' : 'Bereits abgeholt'}
+                  </button>
+                )}
               </div>
             </div>
-            <p className="text-sm text-gray-300">
-              {s?.starterPack?.claimable ? 'Dein Starter Pack ist bereit.' : 'Bereits geclaimt oder nicht verfugbar.'}
-            </p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-amber-300 font-black">+{s?.starterPack?.amount ?? 0}</span>
-              {s?.starterPack?.claimable ? (
-                <button onClick={() => claim('starter')} className="btn-gold px-4 py-2 rounded-xl font-bold">
-                  Claim
-                </button>
-              ) : (
-                <span className="text-xs text-gray-600">Claimed</span>
-              )}
-            </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Daily */}
-          <div className="game-card p-5 sm:p-6 relative overflow-hidden">
-            {fx === 'daily' && <div className="absolute inset-0 reward-burst pointer-events-none" />}
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-base">🌅</div>
-              <div className="min-w-0">
-                <p className="text-white font-bold">Daily Reward</p>
-                <p className="text-xs text-gray-500">Alle 24h</p>
-              </div>
-            </div>
-            <p className="text-sm text-gray-300">Hol dir jeden Tag gratis Tokens ab.</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-amber-300 font-black">+{s?.daily?.amount ?? 0}</span>
-              {s?.daily?.eligible ? (
-                <button onClick={() => claim('daily')} className="btn-gold px-4 py-2 rounded-xl font-bold">
-                  Claim
-                </button>
-              ) : (
-                <span className="text-xs text-gray-600">Come back in {fmtMs(s?.daily?.remainingMs ?? 0)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Vote */}
-          <div className="game-card p-5 sm:p-6 relative overflow-hidden">
-            {fx === 'vote' && <div className="absolute inset-0 reward-burst pointer-events-none" />}
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-base">🗳️</div>
-              <div className="min-w-0">
-                <p className="text-white font-bold">Vote to Earn</p>
-                <p className="text-xs text-gray-500">Alle 12h</p>
-              </div>
-            </div>
-            <p className="text-sm text-gray-300">Vote auf top.gg fur den Fahrstuhl Bot und claim Tokens.</p>
-
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <a
-                href={s?.vote?.url || '#'}
-                target="_blank"
-                rel="noreferrer"
-                className={`btn-chip text-center ${s?.vote?.url ? '' : 'opacity-40 pointer-events-none'}`}
-              >
-                Vote
-              </a>
-              <button
-                onClick={() => claim('vote')}
-                className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={!s?.vote?.eligible}
-                title={!s?.vote?.eligible ? `Cooldown: ${fmtMs(s?.vote?.remainingMs ?? 0)}` : 'Claim vote reward'}
-              >
-                Claim
-              </button>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between text-xs text-gray-600">
-              <span>Reward</span>
-              <span className="text-amber-300 font-bold">+{s?.vote?.amount ?? 0}</span>
-            </div>
-            {!s?.vote?.eligible && (
-              <p className="text-[11px] text-gray-600 mt-2">Du kannst wieder voten in {fmtMs(s?.vote?.remainingMs ?? 0)}.</p>
-            )}
-          </div>
+        {/* ── Footer hint ── */}
+        <div className="mt-6 game-card px-5 py-4 flex items-center gap-3 text-sm text-gray-400 animate-fade-in-up stagger-3">
+          <span className="text-lg">💡</span>
+          <p>Weitere Tokens gibt's fürs gemeinsame Sprachchatten auf dem Server und in den Spielen nebenan in der Sidebar.</p>
         </div>
       </div>
     </div>
   );
 }
-
