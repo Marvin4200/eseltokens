@@ -9,6 +9,8 @@ const NAV_ITEMS = [
   { href: '/coinflip', icon: '🪙', label: 'Coinflip' },
   { href: '/mines', icon: '💣', label: 'Mines' },
   { href: '/dice', icon: '🎲', label: 'Dice' },
+  { href: '/plinko', icon: '🔴', label: 'Plinko' },
+  { href: '/roulette', icon: '🎡', label: 'Roulette' },
   { href: '/jackpot', icon: '🎰', label: 'Jackpot' },
   { href: '/blackjack', icon: '🃏', label: 'Blackjack' },
   { href: '/giveaways', icon: '🎁', label: 'Giveaways' },
