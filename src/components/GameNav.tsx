@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: '/earn', icon: '➕', label: '+ Tokens' },
   { href: '/crash', icon: '📈', label: 'Crash' },
   { href: '/coinflip', icon: '🪙', label: 'Coinflip' },
+  { href: '/mines', icon: '💣', label: 'Mines' },
   { href: '/jackpot', icon: '🎰', label: 'Jackpot' },
   { href: '/blackjack', icon: '🃏', label: 'Blackjack' },
   { href: '/giveaways', icon: '🎁', label: 'Giveaways' },

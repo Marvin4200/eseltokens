@@ -240,6 +240,30 @@ function getDb() {
       `INSERT OR IGNORE INTO ad_slots (key, enabled, mode, title, description, imageEmoji, linkUrl, ctaText, badgeText)
        VALUES ('eseltokens-dashboard', 1, 'house', 'Eselbuilder Pro', 'KI-Server-Aufbau ohne Limits, mehr EselFreund-Minuten und Prio-Support.', '🤖', 'https://shop.eselbande.com', 'Pro holen →', 'Anzeige')`
     ).run();
+
+    // Mines: minePositions bleibt server-seitig geheim (nie an den Client geschickt,
+    // solange status='active') -- erst bei bust/cashout wird das volle Feld aufgedeckt.
+    // Ein User darf immer nur ein aktives Spiel haben (partial unique index unten).
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS mines_games (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        bet INTEGER NOT NULL,
+        mineCount INTEGER NOT NULL,
+        gridSize INTEGER NOT NULL DEFAULT 25,
+        minePositions TEXT NOT NULL,
+        revealedTiles TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'cashed', 'busted')),
+        multiplier REAL NOT NULL DEFAULT 1,
+        payout INTEGER,
+        createdAt TEXT DEFAULT (datetime('now')),
+        updatedAt TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_mines_games_user_active
+        ON mines_games(userId) WHERE status = 'active';
+      CREATE INDEX IF NOT EXISTS idx_mines_games_user ON mines_games(userId);
+    `);
   }
   return db;
 }
