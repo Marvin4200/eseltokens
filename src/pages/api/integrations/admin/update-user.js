@@ -42,9 +42,12 @@ export default async function handler(req, res) {
         db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(safeBalance, id);
         const delta = safeBalance - Number(user.balance || 0);
         if (delta !== 0) {
+          // transactions.fromUserId ist NOT NULL -- wie bei anderen System-Buchungen ohne
+          // echten Absender (z.B. reward_voice_activity) traegt fromUserId hier den
+          // betroffenen User selbst, toUserId bleibt leer.
           recordTransaction(db, {
-            toUserId: id,
-            fromUserId: null,
+            fromUserId: id,
+            toUserId: null,
             type: delta > 0 ? 'admin_grant' : 'admin_remove',
             amount: Math.abs(delta),
           });
