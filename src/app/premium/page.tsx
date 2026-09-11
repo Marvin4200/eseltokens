@@ -1,8 +1,8 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { apiPath } from '@/lib/clientPaths';
 
 const CATALOG = [
@@ -13,9 +13,15 @@ const CATALOG = [
   { productKey: 'eselmoderator_pro', name: 'EselModerator Premium Pro', priceTokens: 6000 },
 ];
 
-export default function PremiumPage() {
+function PremiumPageInner() {
   const { data: session, status: authStatus } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Ein Shop-Link wie /eseltokens/premium?product=eselbuilder_pro kam vorher trotzdem auf der
+  // vollen Liste raus -- verwirrend, wenn man auf der Shop-Seite schon ein Produkt gewaehlt hat.
+  // Mit dem Query-Param zeigen wir direkt nur noch dieses eine (plus einen Link zu allen).
+  const preselectedKey = searchParams?.get('product') ?? null;
+  const [showAll, setShowAll] = useState(!preselectedKey);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [balance, setBalance] = useState<number | null>(
@@ -59,8 +65,11 @@ export default function PremiumPage() {
       <h1>Premium mit EselTokens freischalten</h1>
       {balance !== null && <p>Dein Guthaben: {balance} EselTokens</p>}
       {msg && <p>{msg}</p>}
+      {!showAll && preselectedKey && !CATALOG.some((p) => p.productKey === preselectedKey) && (
+        <p>Unbekanntes Produkt, hier die volle Liste:</p>
+      )}
       <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-        {CATALOG.map((p) => (
+        {CATALOG.filter((p) => showAll || p.productKey === preselectedKey).map((p) => (
           <div
             key={p.productKey}
             style={{
@@ -85,6 +94,21 @@ export default function PremiumPage() {
           </div>
         ))}
       </div>
+      {!showAll && (
+        <p style={{ marginTop: 16 }}>
+          <button onClick={() => setShowAll(true)}>Alle Produkte anzeigen</button>
+        </p>
+      )}
     </main>
+  );
+}
+
+// useSearchParams() bailt bei statischer Vorab-Generierung aus dem Server-Rendering aus, wenn die
+// Komponente, die es aufruft, nicht in Suspense steckt -- ohne das bricht "next build" komplett ab.
+export default function PremiumPage() {
+  return (
+    <Suspense fallback={null}>
+      <PremiumPageInner />
+    </Suspense>
   );
 }
