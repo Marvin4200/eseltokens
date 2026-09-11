@@ -1,22 +1,6 @@
 import getDb from '@/lib/db';
 import { creditTokens, recordTransaction } from '@/lib/tokenLedger';
-
-function requireIntegrationSecret(req, res) {
-  const expected = (process.env.FAHRSTUHL_INTEGRATION_SECRET || process.env.ESELTOKENS_VOICE_REWARD_SECRET || '').trim();
-  if (!expected) {
-    res.status(503).json({ error: 'Voice reward integration is not configured' });
-    return false;
-  }
-
-  const auth = String(req.headers.authorization || '');
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  if (token !== expected) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
-  }
-
-  return true;
-}
+import { requireIntegrationSecret } from '@/lib/apiGuards';
 
 function dateKey(ms = Date.now()) {
   return new Date(ms).toISOString().slice(0, 10);
@@ -36,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  if (!requireIntegrationSecret(req, res)) return;
+  if (!requireIntegrationSecret(req, res, ['FAHRSTUHL_INTEGRATION_SECRET', 'ESELTOKENS_VOICE_REWARD_SECRET'], 'Voice reward integration is not configured')) return;
 
   try {
     const {

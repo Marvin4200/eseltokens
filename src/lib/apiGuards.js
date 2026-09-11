@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { getServerSession } from 'next-auth';
 import authOptions from '@/lib/authOptions';
 
@@ -51,6 +52,34 @@ export function parseNonNegativeInt(value, name, max = 1000000000) {
     throw err;
   }
   return number;
+}
+
+// Gemeinsamer Guard fuer alle server-zu-server Integrations-Endpunkte (kein Discord-Login,
+// sondern ein geteiltes Bearer-Secret aus einer Env-Variable). Zeitkonstanter Vergleich statt
+// simplem "!==", sonst kann ein Angreifer das Secret Byte fuer Byte per Timing-Unterschied
+// erraten (siehe Changelog 2026-09-05, dieselbe Haertung wurde dort schon fuer andere Stellen
+// gemacht -- diese hier hatten sie noch nicht bekommen).
+export function requireIntegrationSecret(req, res, envVarNames, errorMessage) {
+  const names = Array.isArray(envVarNames) ? envVarNames : [envVarNames];
+  let expected = '';
+  for (const name of names) {
+    expected = (process.env[name] || '').trim();
+    if (expected) break;
+  }
+  if (!expected) {
+    res.status(503).json({ error: errorMessage || `${names.join(' / ')} ist nicht konfiguriert` });
+    return false;
+  }
+  const auth = String(req.headers.authorization || '');
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(expected);
+  const valid = tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf);
+  if (!valid) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+  }
+  return true;
 }
 
 export function sendApiError(res, error, fallback = 'Internal server error') {

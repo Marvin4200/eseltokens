@@ -1,20 +1,6 @@
 import getDb from '@/lib/db';
 import { recordTransaction } from '@/lib/tokenLedger';
-
-function requireIntegrationSecret(req, res) {
-  const expected = (process.env.SHOP_INTEGRATION_SECRET || '').trim();
-  if (!expected) {
-    res.status(503).json({ error: 'Admin integration is not configured' });
-    return false;
-  }
-  const auth = String(req.headers.authorization || '');
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  if (token !== expected) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
-  }
-  return true;
-}
+import { requireIntegrationSecret } from '@/lib/apiGuards';
 
 function parseId(value) {
   const id = Number(value);
@@ -38,7 +24,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
-  if (!requireIntegrationSecret(req, res)) return;
+  if (!requireIntegrationSecret(req, res, 'SHOP_INTEGRATION_SECRET', 'Admin integration is not configured')) return;
 
   try {
     const db = getDb();

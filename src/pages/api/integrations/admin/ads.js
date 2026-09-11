@@ -1,25 +1,11 @@
 import getDb from '@/lib/db';
 import { AD_SLOT_KEY_RE, AD_MODES } from '@/lib/ads';
-
-function requireIntegrationSecret(req, res) {
-  const expected = (process.env.SHOP_INTEGRATION_SECRET || '').trim();
-  if (!expected) {
-    res.status(503).json({ error: 'Admin integration is not configured' });
-    return false;
-  }
-  const auth = String(req.headers.authorization || '');
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  if (token !== expected) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
-  }
-  return true;
-}
+import { requireIntegrationSecret } from '@/lib/apiGuards';
 
 // Server-zu-Server-Pendant zu /api/admin/ads/slots (GET) und /api/admin/ads/update (POST),
 // in einem Endpunkt gebuendelt fuer admin.eselbande.com.
 export default async function handler(req, res) {
-  if (!requireIntegrationSecret(req, res)) return;
+  if (!requireIntegrationSecret(req, res, 'SHOP_INTEGRATION_SECRET', 'Admin integration is not configured')) return;
   const db = getDb();
 
   if (req.method === 'GET') {
